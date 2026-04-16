@@ -75,9 +75,9 @@ export default function SearchPage() {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         {/* Left: Filters + Table */}
-        <div className="xl:col-span-9 space-y-6">
+        <div className="space-y-6">
           <motion.div 
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -217,60 +217,6 @@ export default function SearchPage() {
                   <span className="material-symbols-outlined">chevron_right</span>
                 </button>
               </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Right: Insight Panel */}
-        <div className="xl:col-span-3 space-y-6">
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white p-6 lg:p-8 rounded-[2.5rem] shadow-soft border border-surface-container/30"
-          >
-            <div className="flex items-center gap-3 mb-8">
-              <div className="h-10 w-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500">
-                <span className="material-symbols-outlined">analytics</span>
-              </div>
-              <h4 className="text-lg font-black tracking-tighter">Insights</h4>
-            </div>
-            
-            <div className="space-y-6">
-              {departments.slice(0, 5).map((dept, i) => (
-                <div key={dept.code} className="group">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-on-surface-variant group-hover:text-primary transition-colors">{dept.name}</span>
-                    <span className="text-[10px] font-black text-outline bg-surface-container-low px-1.5 py-0.5 rounded-md">{dept.assetCount}</span>
-                  </div>
-                  <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${dept.percentage}%` }}
-                      transition={{ duration: 1.5, delay: 0.6 + i * 0.1 }}
-                      className={`h-full rounded-full transition-all ${i % 2 === 0 ? "bg-primary" : "bg-orange-500"}`} 
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div 
-             initial={{ opacity: 0, x: 20 }}
-             animate={{ opacity: 1, x: 0 }}
-             transition={{ delay: 0.4 }}
-             className="bg-primary-fixed-dim p-8 rounded-[2.5rem] text-white shadow-2xl shadow-primary/20 relative overflow-hidden group"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:scale-150 transition-transform duration-700" />
-            <div className="relative z-10">
-              <h4 className="text-lg font-black tracking-tight mb-2">Thông minh AI</h4>
-              <p className="text-xs font-semibold text-white/70 leading-relaxed mb-6">
-                Bạn có 45 tài sản sắp hết thời gian khấu hao. Hãy chuẩn bị phương án thanh lý.
-              </p>
-              <button className="w-full py-3 bg-white text-primary rounded-xl text-xs font-bold shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-all">
-                Xem danh sách
-              </button>
             </div>
           </motion.div>
         </div>
