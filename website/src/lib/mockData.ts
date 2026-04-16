@@ -33,6 +33,7 @@ export interface AuditLog {
   newValue?: string;
   user: string;
   description: string;
+  reason?: string;
 }
 
 export interface Department {
