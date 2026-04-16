@@ -6,10 +6,9 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
-  { href: "/", label: "Tổng quan", icon: "dashboard" },
+  { href: "/", label: "Tài sản", icon: "account_balance_wallet" },
   { href: "/search", label: "Tra cứu", icon: "search_insights" },
   { href: "/personnel", label: "Nhân sự", icon: "badge" },
-  { href: "/assets", label: "Tài sản", icon: "account_balance_wallet" },
   { href: "/audit", label: "Lịch sử", icon: "history_edu" },
   { href: "/reports", label: "Báo cáo", icon: "assessment" },
   { href: "/settings", label: "Cài đặt", icon: "settings" },
