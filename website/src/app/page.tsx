@@ -1,17 +1,29 @@
 "use client";
 
-import { assets, formatCurrency, formatDate, statusLabels } from "@/lib/mockData";
+import { formatCurrency, formatDate, statusLabels, type Asset } from "@/lib/mockData";
+import { fetchAssets } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
-  const [editableAssets, setEditableAssets] = useState([...assets]);
+  const [editableAssets, setEditableAssets] = useState<Asset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
+  useEffect(() => {
+    fetchAssets().then(data => {
+      setEditableAssets(data);
+      setIsLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setIsLoading(false);
+    });
+  }, []);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
   // New states for specialized edits
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);

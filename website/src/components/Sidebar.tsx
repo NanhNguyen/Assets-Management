@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from "framer-motion";
 const navItems = [
   { href: "/", label: "Tài sản", icon: "account_balance_wallet" },
   { href: "/search", label: "Tra cứu", icon: "search_insights" },
-  { href: "/personnel", label: "Nhân sự", icon: "badge" },
   { href: "/audit", label: "Lịch sử", icon: "history_edu" },
   { href: "/reports", label: "Báo cáo", icon: "assessment" },
   { href: "/settings", label: "Cài đặt", icon: "settings" },
@@ -26,7 +25,9 @@ export default function Sidebar() {
         animate={{ opacity: 1, x: 0 }}
         className="mb-10 px-2"
       >
-        <h1 className="text-2xl font-black gradient-text tracking-tighter">Plutus</h1>
+        <Link href="/">
+          <h1 className="text-2xl font-black gradient-text tracking-tighter cursor-pointer">Plutus</h1>
+        </Link>
         <p className="text-[10px] font-bold uppercase tracking-widest text-outline mt-1 opacity-70">
           Enterprise Asset Suite
         </p>

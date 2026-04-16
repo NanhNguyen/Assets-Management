@@ -1,6 +1,7 @@
 "use client";
 
-import { auditLogs, formatDate } from "@/lib/mockData";
+import { formatDate, type AuditLog } from "@/lib/mockData";
+import { fetchAuditLogs } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
@@ -14,18 +15,22 @@ const actionConfig: Record<string, { icon: string; bg: string; color: string; la
 export default function AuditPage() {
   const [activeTab, setActiveTab] = useState<"history" | "deleted">("history");
   
-  // In a real app, this would come from a global store or DB
-  const [logs, setLogs] = useState(auditLogs);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
   const [deletedAssets, setDeletedAssets] = useState<any[]>([]);
 
   useEffect(() => {
-    const savedLogs = localStorage.getItem("plutus_audit_logs");
+    // Fetch logs from DB
+    fetchAuditLogs().then(data => {
+      // We can still combine local stored logs if any, or just use DB logs
+      const savedLogs = localStorage.getItem("plutus_audit_logs");
+      if (savedLogs) {
+        setLogs([...JSON.parse(savedLogs), ...data]);
+      } else {
+        setLogs(data);
+      }
+    }).catch(console.error);
+
     const savedDeleted = localStorage.getItem("plutus_deleted_assets");
-    if (savedLogs) {
-      const parsedLogs = JSON.parse(savedLogs);
-      // Combine mock logs with local storage logs (newest first)
-      setLogs([...parsedLogs, ...auditLogs]);
-    }
     if (savedDeleted) {
       setDeletedAssets(JSON.parse(savedDeleted));
     }

@@ -1,17 +1,38 @@
 "use client";
 
-import { departments, summaryStats, formatCurrency } from "@/lib/mockData";
+import { formatCurrency, type Asset } from "@/lib/mockData";
+import { fetchAssets, generateSummaryStats } from "@/lib/api";
 import { motion } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
 
 export default function ReportsPage() {
-  const categoryData = [
-    { name: "Máy tính", count: 342, value: 15200000000, pct: 36 },
-    { name: "Server & Hạ tầng", count: 87, value: 12100000000, pct: 28 },
-    { name: "Nội thất", count: 234, value: 5600000000, pct: 13 },
-    { name: "Màn hình", count: 198, value: 4200000000, pct: 10 },
-    { name: "Máy in", count: 89, value: 3400000000, pct: 8 },
-    { name: "Khác", count: 334, value: 2000000000, pct: 5 },
-  ];
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAssets().then(data => {
+      setAssets(data);
+      setIsLoading(false);
+    }).catch(console.error);
+  }, []);
+
+  const stats = useMemo(() => generateSummaryStats(assets), [assets]);
+  const departments = stats.departments;
+
+  const categoryData = useMemo(() => {
+    const cats = new Map();
+    assets.forEach(a => {
+      if (!cats.has(a.category)) cats.set(a.category, { name: a.category, count: 0, value: 0, pct: 0 });
+      const c = cats.get(a.category);
+      c.count++;
+      c.value += a.price;
+    });
+    const arr = Array.from(cats.values());
+    arr.forEach(c => c.pct = stats.totalAssets > 0 ? Math.round((c.count / stats.totalAssets) * 100) : 0);
+    return arr.sort((a, b) => b.count - a.count);
+  }, [assets, stats.totalAssets]);
+
+  if (isLoading) return <div className="flex h-64 items-center justify-center text-primary font-bold">Đang tải biểu đồ...</div>;
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -32,8 +53,8 @@ export default function ReportsPage() {
       {/* KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Tổng tài sản", value: summaryStats.totalAssets.toLocaleString("vi-VN"), icon: "inventory_2", trend: "+12%" },
-          { label: "Tổng giá trị", value: "4.5 tỷ đ", icon: "payments", trend: "+8%" },
+          { label: "Tổng tài sản", value: stats.totalAssets.toLocaleString("vi-VN"), icon: "inventory_2", trend: "+12%" },
+          { label: "Tổng giá trị", value: `${(stats.totalValue / 1000000000).toFixed(1)} tỷ đ`, icon: "payments", trend: "+8%" },
           { label: "Tỷ lệ sử dụng", value: "76.2%", icon: "pie_chart", trend: "+3%" },
           { label: "TB khấu hao", value: "24.5%", icon: "trending_down", trend: "-2%" },
         ].map((kpi) => (
@@ -102,10 +123,10 @@ export default function ReportsPage() {
             <h4 className="text-base font-bold text-on-surface mb-5">Tổng hợp trạng thái tài sản</h4>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "Đang sử dụng", value: summaryStats.inUse, pct: 76, color: "bg-status-success" },
-                { label: "Chưa sử dụng", value: summaryStats.unused, pct: 10, color: "bg-status-info" },
-                { label: "Đang bảo trì", value: summaryStats.maintenance, pct: 7, color: "bg-status-warning" },
-                { label: "Đã thanh lý", value: summaryStats.liquidated, pct: 7, color: "bg-status-error" },
+                { label: "Đang sử dụng", value: stats.inUse, pct: 76, color: "bg-status-success" },
+                { label: "Chưa sử dụng", value: stats.unused, pct: 10, color: "bg-status-info" },
+                { label: "Đang bảo trì", value: stats.maintenance, pct: 7, color: "bg-status-warning" },
+                { label: "Đã thanh lý", value: stats.liquidated, pct: 7, color: "bg-status-error" },
               ].map((s) => (
                 <div key={s.label} className="p-4 bg-surface-container-low rounded-2xl">
                   <div className="flex items-center justify-between mb-3">

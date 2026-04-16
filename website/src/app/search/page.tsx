@@ -1,13 +1,41 @@
 "use client";
 
-import { assets, departments, formatCurrency, formatDate, summaryStats } from "@/lib/mockData";
+import { departments, formatCurrency, formatDate, summaryStats, type Asset } from "@/lib/mockData";
+import { fetchAssets } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<"assets" | "personnel">("assets");
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAssets().then(data => {
+      setAssets(data);
+      setIsLoading(false);
+    }).catch(console.error);
+  }, []);
+
+  // Derive unique personnel from assets
+  const personnel = useMemo(() => {
+    const userMap = new Map();
+    assets.forEach(asset => {
+      if (!userMap.has(asset.user)) {
+        userMap.set(asset.user, {
+          name: asset.user,
+          department: asset.department,
+          position: asset.position,
+          assets: []
+        });
+      }
+      userMap.get(asset.user).assets.push(asset);
+    });
+    return Array.from(userMap.values());
+  }, []);
 
   const filteredAssets = assets.filter((a) => {
     const matchesSearch =
@@ -18,6 +46,11 @@ export default function SearchPage() {
     const matchesFilter = activeFilter === "all" || a.status === activeFilter;
     return matchesSearch && matchesFilter;
   });
+
+  const filteredPersonnel = personnel.filter(p =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.department.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-8 pb-10">
@@ -33,14 +66,27 @@ export default function SearchPage() {
             Trung tâm Tra cứu
           </h2>
         </div>
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="btn-secondary flex items-center gap-2 border border-surface-container shadow-sm px-6 py-3"
-        >
-          <span className="material-symbols-outlined text-xl">download</span>
-          Export Excel
-        </motion.button>
+        
+        <div className="flex bg-surface-container-low rounded-2xl p-1.5 border border-surface-container-high/50 shadow-inner">
+          <button
+            onClick={() => setActiveTab("assets")}
+            className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all relative ${activeTab === "assets" ? "text-primary shadow-sm" : "text-outline hover:text-on-surface"}`}
+          >
+            {activeTab === "assets" && (
+              <motion.div layoutId="search-tab-bg" className="absolute inset-0 bg-white rounded-xl -z-10" />
+            )}
+            Tài sản
+          </button>
+          <button
+            onClick={() => setActiveTab("personnel")}
+            className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all relative flex items-center gap-2 ${activeTab === "personnel" ? "text-primary shadow-sm" : "text-outline hover:text-on-surface"}`}
+          >
+            {activeTab === "personnel" && (
+              <motion.div layoutId="search-tab-bg" className="absolute inset-0 bg-white rounded-xl -z-10" />
+            )}
+            Nhân sự
+          </button>
+        </div>
       </motion.div>
 
       {/* Summary Cards */}
@@ -48,7 +94,7 @@ export default function SearchPage() {
         {[
           { label: "Tổng số tài sản", val: summaryStats.totalAssets.toLocaleString("vi-VN"), extra: "+12%", icon: "inventory", color: "indigo" },
           { label: "Tổng giá trị", val: "4.5 tỷ đ", extra: "VNĐ", icon: "payments", color: "sky" },
-          { label: "Người sử dụng", val: summaryStats.activeUsers, extra: "đang hoạt động", icon: "group", color: "violet" }
+          { label: "Người sử dụng", val: personnel.length, extra: "nhân sự", icon: "group", color: "violet" }
         ].map((s, i) => (
           <motion.div 
             key={s.label}
@@ -76,7 +122,6 @@ export default function SearchPage() {
 
       {/* Main Content */}
       <div className="grid grid-cols-1 gap-8">
-        {/* Left: Filters + Table */}
         <div className="space-y-6">
           <motion.div 
             initial={{ opacity: 0, scale: 0.98 }}
@@ -87,137 +132,147 @@ export default function SearchPage() {
             <div className="p-6 lg:p-10 border-b border-surface-container/50 bg-surface-container-lowest/50">
               <div className="relative mb-6">
                 <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-xl">
-                  search
+                  {activeTab === "assets" ? "search" : "person_search"}
                 </span>
                 <input
                   className="input-field !pl-14 !rounded-2xl !py-4 shadow-sm focus:shadow-xl focus:shadow-primary/5 border border-surface-container/50 transition-all"
-                  placeholder="Tìm theo tên tài sản, mã serial, người sử dụng hoặc phòng ban…"
+                  placeholder={activeTab === "assets" ? "Tìm theo tên tài sản, mã serial, người sử dụng..." : "Tìm nhân viên theo tên hoặc phòng ban..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <motion.button 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-bold border border-surface-container-high"
-                >
-                  <span className="material-symbols-outlined text-lg">tune</span>
-                  Bộ lọc nâng cao
-                </motion.button>
-                <div className="h-6 w-px bg-surface-container mx-2 hidden sm:block" />
-                {[
-                  { key: "all", label: "Tất cả" },
-                  { key: "active", label: "Đang sử dụng" },
-                  { key: "maintenance", label: "Bảo trì" },
-                  { key: "unused", label: "Chưa sử dụng" },
-                  { key: "liquidated", label: "Thanh lý" },
-                ].map((f) => (
-                  <motion.button
-                    key={f.key}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setActiveFilter(f.key)}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                      activeFilter === f.key 
-                        ? "bg-primary text-white shadow-primary/20 scale-105" 
-                        : "bg-surface-container-low text-outline hover:bg-surface-container border border-surface-container-high"
-                    }`}
-                  >
-                    {f.label}
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="table-header border-b border-surface-container/50 bg-surface-container-lowest">
-                    <th className="px-8 py-5">Thông tin tài sản</th>
-                    <th className="px-8 py-5">Mã Serial</th>
-                    <th className="px-8 py-5">Đơn vị</th>
-                    <th className="px-8 py-5">Trạng thái</th>
-                    <th className="px-8 py-5 text-right">Giá trị</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-container/30">
-                  <AnimatePresence mode="popLayout">
-                    {filteredAssets.map((asset, idx) => (
-                      <motion.tr 
-                        key={asset.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ delay: idx * 0.03 }}
-                        className="group hover:bg-surface-container-low/40 transition-all cursor-pointer"
-                      >
-                        <td className="px-8 py-6">
-                          <div className="flex items-center gap-4">
-                            <motion.div 
-                              whileHover={{ scale: 1.1, rotate: 5 }}
-                              className={`h-12 w-12 rounded-2xl bg-${asset.iconColor}/10 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all`}
-                            >
-                              <span className={`material-symbols-outlined text-${asset.iconColor} text-2xl`}>{asset.icon}</span>
-                            </motion.div>
-                            <div>
-                              <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{asset.name}</p>
-                              <p className="text-[11px] text-outline font-semibold uppercase tracking-wider mt-0.5">{asset.manufacturer}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-8 py-6">
-                          <span className="text-xs font-black font-mono text-outline bg-surface-container-low px-2 py-1 rounded-lg group-hover:bg-primary group-hover:text-white transition-all">
-                            {asset.code}
-                          </span>
-                        </td>
-                        <td className="px-8 py-6">
-                          <span className="text-xs font-bold text-on-surface-variant flex items-center gap-2">
-                             <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-                             {asset.department}
-                          </span>
-                        </td>
-                        <td className="px-8 py-6"><StatusBadge status={asset.status} /></td>
-                        <td className="px-8 py-6 text-right">
-                          <div className="flex flex-col items-end">
-                            <p className="text-sm font-black text-on-surface">{formatCurrency(asset.price)}</p>
-                            <p className="text-[10px] font-bold text-outline mt-0.5 whitespace-nowrap">{formatDate(asset.purchaseDate)}</p>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-              {filteredAssets.length === 0 && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="py-20 flex flex-col items-center justify-center text-outline"
-                >
-                  <span className="material-symbols-outlined text-6xl mb-4 opacity-20">search_off</span>
-                  <p className="font-bold">Không tìm thấy tài sản nào phù hợp</p>
-                </motion.div>
+              
+              {activeTab === "assets" && (
+                <div className="flex flex-wrap items-center gap-3">
+                  {[
+                    { key: "all", label: "Tất cả" },
+                    { key: "active", label: "Đang sử dụng" },
+                    { key: "maintenance", label: "Bảo trì" },
+                    { key: "unused", label: "Chưa sử dụng" },
+                    { key: "liquidated", label: "Thanh lý" },
+                  ].map((f) => (
+                    <motion.button
+                      key={f.key}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setActiveFilter(f.key)}
+                      className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                        activeFilter === f.key 
+                          ? "bg-primary text-white shadow-primary/20 scale-105" 
+                          : "bg-surface-container-low text-outline hover:bg-surface-container border border-surface-container-high"
+                      }`}
+                    >
+                      {f.label}
+                    </motion.button>
+                  ))}
+                </div>
               )}
             </div>
 
-            {/* Pagination */}
-            <div className="p-8 border-t border-surface-container/50 flex flex-col sm:flex-row items-center justify-between gap-6 bg-surface-container-lowest/30">
-              <p className="text-[10px] font-black text-outline uppercase tracking-widest">
-                Showing <span className="text-primary">{filteredAssets.length}</span> of {summaryStats.totalAssets} results
-              </p>
-              <div className="flex items-center gap-2">
-                <button className="h-10 w-10 flex items-center justify-center bg-surface-container-low rounded-xl text-outline border border-surface-container-high hover:text-primary transition-all shadow-sm">
-                  <span className="material-symbols-outlined">chevron_left</span>
-                </button>
-                <button className="h-10 w-10 flex items-center justify-center bg-primary text-white rounded-xl text-sm font-black shadow-lg shadow-primary/20">1</button>
-                <button className="h-10 w-10 flex items-center justify-center bg-surface-container-low rounded-xl text-sm font-bold text-outline hover:bg-surface-container transition-all">2</button>
-                <button className="h-10 w-10 flex items-center justify-center bg-surface-container-low rounded-xl text-sm font-bold text-outline hover:bg-surface-container transition-all">3</button>
-                <button className="h-10 w-10 flex items-center justify-center bg-surface-container-low rounded-xl text-outline border border-surface-container-high hover:text-primary transition-all shadow-sm">
-                  <span className="material-symbols-outlined">chevron_right</span>
-                </button>
+            <AnimatePresence mode="wait">
+              {activeTab === "assets" ? (
+                <motion.div
+                  key="assets-table"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="overflow-x-auto"
+                >
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="table-header border-b border-surface-container/50 bg-surface-container-lowest">
+                        <th className="px-8 py-5">Thông tin tài sản</th>
+                        <th className="px-8 py-5">Mã Serial</th>
+                        <th className="px-8 py-5">Người sử dụng</th>
+                        <th className="px-8 py-5">Trạng thái</th>
+                        <th className="px-8 py-5 text-right">Giá trị</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-container/30">
+                      {filteredAssets.map((asset, idx) => (
+                        <motion.tr 
+                          key={asset.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: idx * 0.02 }}
+                          className="group hover:bg-surface-container-low/40 transition-all cursor-pointer"
+                        >
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-4">
+                              <div className={`h-12 w-12 rounded-2xl bg-${asset.iconColor}/10 flex items-center justify-center`}>
+                                <span className={`material-symbols-outlined text-${asset.iconColor} text-2xl`}>{asset.icon}</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-on-surface">{asset.name}</p>
+                                <p className="text-[11px] text-outline font-semibold uppercase tracking-wider">{asset.manufacturer}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 font-mono text-xs font-bold text-outline">{asset.code}</td>
+                          <td className="px-8 py-6">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-on-surface">{asset.user}</span>
+                              <span className="text-[10px] text-outline font-bold uppercase">{asset.department}</span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6"><StatusBadge status={asset.status} /></td>
+                          <td className="px-8 py-6 text-right font-black text-sm">{formatCurrency(asset.price)}</td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="personnel-grid"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                >
+                  {filteredPersonnel.map((person, i) => (
+                    <div key={person.name} className="bg-surface-container-lowest p-6 rounded-[2.5rem] border border-surface-container group hover:shadow-xl transition-all">
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/10 to-indigo-500/10 flex items-center justify-center text-primary text-2xl font-black">
+                          {person.name.split(" ").pop()?.charAt(0)}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md uppercase">
+                            {person.assets.length} Tài sản
+                          </span>
+                          <p className="text-[10px] text-outline font-bold mt-1 uppercase">{person.department}</p>
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-black text-on-surface mb-1">{person.name}</h3>
+                      <p className="text-xs font-bold text-outline mb-6">{person.position}</p>
+                      
+                      <div className="space-y-2 mb-6 bg-white p-4 rounded-2xl border border-surface-container-low shadow-inner">
+                        <p className="text-[10px] font-black uppercase text-outline tracking-widest mb-2 font-mono">Assets Assigned</p>
+                        {person.assets.slice(0, 2).map((asset: any) => (
+                          <div key={asset.id} className="flex items-center gap-2">
+                             <span className="material-symbols-outlined text-sm text-primary">{asset.icon}</span>
+                             <span className="text-xs font-bold text-on-surface-variant truncate">{asset.name}</span>
+                          </div>
+                        ))}
+                        {person.assets.length > 2 && (
+                          <p className="text-[10px] font-bold text-primary">... và {person.assets.length - 2} tài sản khác</p>
+                        )}
+                      </div>
+                      
+                      <button className="w-full py-3 bg-surface-container text-outline rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all">
+                        Chi tiết bàn giao
+                      </button>
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {filteredAssets.length === 0 && filteredPersonnel.length === 0 && (
+              <div className="py-20 flex flex-col items-center justify-center text-outline">
+                <span className="material-symbols-outlined text-6xl mb-4 opacity-20 text-red-500">search_off</span>
+                <p className="font-black text-sm uppercase tracking-widest opacity-40 text-red-500">Không tìm thấy kết quả nào</p>
               </div>
-            </div>
+            )}
           </motion.div>
         </div>
       </div>
