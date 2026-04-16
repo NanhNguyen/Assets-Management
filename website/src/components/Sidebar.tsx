@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
   { href: "/", label: "Tổng quan", icon: "dashboard" },
   { href: "/search", label: "Tra cứu", icon: "search_insights" },
+  { href: "/personnel", label: "Nhân sự", icon: "badge" },
   { href: "/assets", label: "Tài sản", icon: "account_balance_wallet" },
   { href: "/audit", label: "Lịch sử", icon: "history_edu" },
   { href: "/reports", label: "Báo cáo", icon: "assessment" },
@@ -20,86 +22,125 @@ export default function Sidebar() {
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className="mb-8 px-2">
-        <h1 className="text-lg font-black gradient-text">NetSpace Assets</h1>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-outline mt-1">
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="mb-10 px-2"
+      >
+        <h1 className="text-2xl font-black gradient-text tracking-tighter">Plutus</h1>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-outline mt-1 opacity-70">
           Enterprise Asset Suite
         </p>
-      </div>
+      </motion.div>
 
       {/* Navigation */}
-      <nav className="flex-1 flex flex-col gap-1">
-        {navItems.map((item) => {
+      <nav className="flex-1 flex flex-col gap-1.5">
+        {navItems.map((item, idx) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={isActive ? "nav-item-active" : "nav-item"}
+              className="relative group outline-none"
             >
-              <span
-                className="material-symbols-outlined text-xl"
-                style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className={`flex items-center gap-3 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all relative z-10 ${isActive ? "text-primary shadow-sm" : "text-outline hover:text-on-surface hover:bg-surface-container"
+                  }`}
               >
-                {item.icon}
-              </span>
-              <span>{item.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-pill"
+                    className="absolute inset-0 bg-primary/10 rounded-2xl -z-10 border border-primary/20"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+                <span
+                  className="material-symbols-outlined text-xl transition-transform group-hover:scale-110"
+                  style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
+                >
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-dot"
+                    className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"
+                  />
+                )}
+              </motion.div>
             </Link>
           );
         })}
       </nav>
 
       {/* Bottom Section */}
-      <div className="mt-auto pt-6">
-        <div className="px-4 py-3 bg-primary/5 rounded-xl">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="mt-auto pt-6"
+      >
+        <div className="px-5 py-4 bg-primary/5 rounded-[2rem] border border-primary/10">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase text-primary">Hệ thống</span>
-            <div className="h-2 w-2 rounded-full bg-status-success animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-tighter text-primary">Status</span>
+            <div className="flex gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-status-success animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-status-success/40" />
+            </div>
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-1">Hoạt động ổn định</p>
+          <p className="text-[11px] font-bold text-on-surface-variant mt-2">v2.4.0 • Stable</p>
         </div>
-      </div>
+      </motion.div>
     </>
   );
 
   return (
     <>
       {/* Mobile Hamburger */}
-      <button
+      <motion.button
+        whileTap={{ scale: 0.9 }}
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-xl shadow-glow"
+        className="lg:hidden fixed top-5 left-5 z-50 p-3 bg-white rounded-2xl shadow-glow text-primary flex items-center justify-center border border-primary/5"
         aria-label="Open menu"
       >
         <span className="material-symbols-outlined">menu</span>
-      </button>
+      </motion.button>
 
       {/* Mobile Overlay */}
-      {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-md z-40"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar - Mobile (slide-in) */}
       <aside
-        className={`lg:hidden fixed left-0 top-0 h-screen w-72 bg-surface-container-low z-50 flex flex-col p-6 transition-transform duration-300 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`lg:hidden fixed left-0 top-0 h-screen w-72 bg-surface-container-low z-50 flex flex-col p-8 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${mobileOpen ? "translate-x-0" : "-translate-x-full shadow-none"
+          } shadow-2xl`}
       >
-        <button
+        <motion.button
+          whileTap={{ scale: 0.9 }}
           onClick={() => setMobileOpen(false)}
-          className="absolute top-4 right-4 p-1 text-outline hover:text-on-surface"
+          className="absolute top-6 right-6 p-2 text-outline bg-surface-container rounded-xl hover:text-on-surface"
           aria-label="Close menu"
         >
           <span className="material-symbols-outlined">close</span>
-        </button>
+        </motion.button>
         {sidebarContent}
       </aside>
 
       {/* Sidebar - Desktop (fixed) */}
-      <aside className="hidden lg:flex h-screen w-72 fixed left-0 top-0 bg-surface-container-low z-40 flex-col p-6">
+      <aside className="hidden lg:flex h-screen w-64 fixed left-0 top-0 bg-surface-container-low z-30 flex-col p-8 border-r border-surface-container/50">
         {sidebarContent}
       </aside>
     </>

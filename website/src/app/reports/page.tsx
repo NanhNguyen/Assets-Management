@@ -5,7 +5,7 @@ export default function ReportsPage() {
     { name: "Máy tính", count: 342, value: 15200000000, pct: 36 },
     { name: "Server & Hạ tầng", count: 87, value: 12100000000, pct: 28 },
     { name: "Nội thất", count: 234, value: 5600000000, pct: 13 },
-    { name: "Thiết bị IoT", count: 198, value: 4200000000, pct: 10 },
+    { name: "Màn hình", count: 198, value: 4200000000, pct: 10 },
     { name: "Máy in", count: 89, value: 3400000000, pct: 8 },
     { name: "Khác", count: 334, value: 2000000000, pct: 5 },
   ];
@@ -30,7 +30,7 @@ export default function ReportsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Tổng tài sản", value: summaryStats.totalAssets.toLocaleString("vi-VN"), icon: "inventory_2", trend: "+12%" },
-          { label: "Tổng giá trị", value: "42.5 tỷ đ", icon: "payments", trend: "+8%" },
+          { label: "Tổng giá trị", value: "4.5 tỷ đ", icon: "payments", trend: "+8%" },
           { label: "Tỷ lệ sử dụng", value: "76.2%", icon: "pie_chart", trend: "+3%" },
           { label: "TB khấu hao", value: "24.5%", icon: "trending_down", trend: "-2%" },
         ].map((kpi) => (

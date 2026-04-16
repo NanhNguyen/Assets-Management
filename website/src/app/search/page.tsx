@@ -3,6 +3,7 @@
 import { assets, departments, formatCurrency, formatDate, summaryStats } from "@/lib/mockData";
 import StatusBadge from "@/components/StatusBadge";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -19,66 +20,92 @@ export default function SearchPage() {
   });
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <div className="space-y-8 pb-10">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
+      >
         <div>
-          <p className="label-text">Quản lý Tập trung</p>
-          <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-on-surface mt-1">
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full">Explore Center</span>
+          <h2 className="text-4xl lg:text-5xl font-black tracking-tighter text-on-surface mt-3">
             Trung tâm Tra cứu
           </h2>
         </div>
-        <button className="btn-secondary flex items-center gap-2">
-          <span className="material-symbols-outlined text-lg">download</span>
+        <motion.button 
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="btn-secondary flex items-center gap-2 border border-surface-container shadow-sm px-6 py-3"
+        >
+          <span className="material-symbols-outlined text-xl">download</span>
           Export Excel
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="card p-5 lg:p-6 card-hover">
-          <span className="label-text">Tổng số tài sản</span>
-          <h3 className="text-3xl font-black text-on-surface mt-2">{summaryStats.totalAssets.toLocaleString("vi-VN")}</h3>
-          <p className="text-sm font-medium text-primary mt-1 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">trending_up</span>+12%
-          </p>
-        </div>
-        <div className="card p-5 lg:p-6 card-hover">
-          <span className="label-text">Tổng giá trị</span>
-          <h3 className="text-2xl lg:text-3xl font-black text-on-surface mt-2">42.5 tỷ đ</h3>
-          <p className="text-sm font-medium text-on-surface-variant mt-1">VNĐ</p>
-        </div>
-        <div className="card p-5 lg:p-6 card-hover">
-          <span className="label-text">Người sử dụng</span>
-          <h3 className="text-3xl font-black text-on-surface mt-2">{summaryStats.activeUsers}</h3>
-          <p className="text-sm font-medium text-on-surface-variant mt-1">đang hoạt động</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {[
+          { label: "Tổng số tài sản", val: summaryStats.totalAssets.toLocaleString("vi-VN"), extra: "+12%", icon: "inventory", color: "indigo" },
+          { label: "Tổng giá trị", val: "4.5 tỷ đ", extra: "VNĐ", icon: "payments", color: "sky" },
+          { label: "Người sử dụng", val: summaryStats.activeUsers, extra: "đang hoạt động", icon: "group", color: "violet" }
+        ].map((s, i) => (
+          <motion.div 
+            key={s.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            whileHover={{ y: -5 }}
+            className="bg-white p-6 lg:p-8 rounded-[2rem] shadow-soft border border-surface-container/50 card-hover"
+          >
+            <div className={`h-12 w-12 rounded-2xl bg-${s.color}-500/10 flex items-center justify-center mb-6`}>
+              <span className={`material-symbols-outlined text-${s.color}-500 text-2xl`}>{s.icon}</span>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-outline">{s.label}</span>
+            <h3 className="text-3xl font-black text-on-surface mt-1">{s.val}</h3>
+            {s.label === "Tổng số tài sản" ? (
+              <p className="text-xs font-bold text-green-600 mt-2 flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm font-bold">trending_up</span>{s.extra}
+              </p>
+            ) : (
+              <p className="text-xs font-semibold text-outline mt-2">{s.extra}</p>
+            )}
+          </motion.div>
+        ))}
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Left: Filters + Table */}
-        <div className="xl:col-span-9">
-          <div className="card overflow-hidden">
+        <div className="xl:col-span-9 space-y-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2.5rem] shadow-soft border border-surface-container/30 overflow-hidden"
+          >
             {/* Search + Filters */}
-            <div className="p-4 lg:p-6 border-b border-surface-container">
-              <div className="relative mb-4">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">
+            <div className="p-6 lg:p-10 border-b border-surface-container/50 bg-surface-container-lowest/50">
+              <div className="relative mb-6">
+                <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-xl">
                   search
                 </span>
                 <input
-                  className="input-field !pl-12"
-                  placeholder="Tìm theo tên tài sản, mã, người sử dụng…"
+                  className="input-field !pl-14 !rounded-2xl !py-4 shadow-sm focus:shadow-xl focus:shadow-primary/5 border border-surface-container/50 transition-all"
+                  placeholder="Tìm theo tên tài sản, mã serial, người sử dụng hoặc phòng ban…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button className="btn-secondary flex items-center gap-2 !py-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-bold border border-surface-container-high"
+                >
                   <span className="material-symbols-outlined text-lg">tune</span>
-                  Bộ lọc
-                </button>
-                <div className="h-6 w-px bg-surface-container mx-1 hidden sm:block" />
+                  Bộ lọc nâng cao
+                </motion.button>
+                <div className="h-6 w-px bg-surface-container mx-2 hidden sm:block" />
                 {[
                   { key: "all", label: "Tất cả" },
                   { key: "active", label: "Đang sử dụng" },
@@ -86,164 +113,166 @@ export default function SearchPage() {
                   { key: "unused", label: "Chưa sử dụng" },
                   { key: "liquidated", label: "Thanh lý" },
                 ].map((f) => (
-                  <button
+                  <motion.button
                     key={f.key}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setActiveFilter(f.key)}
-                    className={`filter-chip ${activeFilter === f.key ? "filter-chip-active" : "filter-chip-inactive"}`}
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                      activeFilter === f.key 
+                        ? "bg-primary text-white shadow-primary/20 scale-105" 
+                        : "bg-surface-container-low text-outline hover:bg-surface-container border border-surface-container-high"
+                    }`}
                   >
                     {f.label}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
 
-            {/* Desktop Table */}
-            <div className="hidden lg:block overflow-x-auto">
+            {/* Table */}
+            <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="table-header border-b border-surface-container">
-                    <th className="px-6 py-4">Tên Tài Sản</th>
-                    <th className="px-6 py-4">Mã TS</th>
-                    <th className="px-6 py-4">Phòng Ban</th>
-                    <th className="px-6 py-4">Ngày Mua</th>
-                    <th className="px-6 py-4">Trạng Thái</th>
-                    <th className="px-6 py-4">Giá Trị</th>
-                    <th className="px-6 py-4 text-right">Hành động</th>
+                  <tr className="table-header border-b border-surface-container/50 bg-surface-container-lowest">
+                    <th className="px-8 py-5">Thông tin tài sản</th>
+                    <th className="px-8 py-5">Mã Serial</th>
+                    <th className="px-8 py-5">Đơn vị</th>
+                    <th className="px-8 py-5">Trạng thái</th>
+                    <th className="px-8 py-5 text-right">Giá trị</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-surface-container/50">
-                  {filteredAssets.map((asset) => (
-                    <tr key={asset.id} className="group hover:bg-surface-container-low/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-10 w-10 rounded-xl bg-${asset.iconColor}-50 flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                            <span className={`material-symbols-outlined text-${asset.iconColor}-600 text-lg`}>{asset.icon}</span>
+                <tbody className="divide-y divide-surface-container/30">
+                  <AnimatePresence mode="popLayout">
+                    {filteredAssets.map((asset, idx) => (
+                      <motion.tr 
+                        key={asset.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ delay: idx * 0.03 }}
+                        className="group hover:bg-surface-container-low/40 transition-all cursor-pointer"
+                      >
+                        <td className="px-8 py-6">
+                          <div className="flex items-center gap-4">
+                            <motion.div 
+                              whileHover={{ scale: 1.1, rotate: 5 }}
+                              className={`h-12 w-12 rounded-2xl bg-${asset.iconColor}/10 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all`}
+                            >
+                              <span className={`material-symbols-outlined text-${asset.iconColor} text-2xl`}>{asset.icon}</span>
+                            </motion.div>
+                            <div>
+                              <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{asset.name}</p>
+                              <p className="text-[11px] text-outline font-semibold uppercase tracking-wider mt-0.5">{asset.manufacturer}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-on-surface">{asset.name}</p>
-                            <p className="text-xs text-outline font-medium">{asset.manufacturer}</p>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className="text-xs font-black font-mono text-outline bg-surface-container-low px-2 py-1 rounded-lg group-hover:bg-primary group-hover:text-white transition-all">
+                            {asset.code}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className="text-xs font-bold text-on-surface-variant flex items-center gap-2">
+                             <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                             {asset.department}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6"><StatusBadge status={asset.status} /></td>
+                        <td className="px-8 py-6 text-right">
+                          <div className="flex flex-col items-end">
+                            <p className="text-sm font-black text-on-surface">{formatCurrency(asset.price)}</p>
+                            <p className="text-[10px] font-bold text-outline mt-0.5 whitespace-nowrap">{formatDate(asset.purchaseDate)}</p>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-mono text-on-surface-variant">{asset.code}</td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs font-bold px-3 py-1 bg-surface-container-high rounded-full">{asset.department}</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-on-surface-variant font-medium">{formatDate(asset.purchaseDate)}</td>
-                      <td className="px-6 py-4"><StatusBadge status={asset.status} /></td>
-                      <td className="px-6 py-4 text-sm font-bold text-on-surface">{formatCurrency(asset.price)}</td>
-                      <td className="px-6 py-4 text-right">
-                        <button className="p-2 hover:bg-white rounded-lg transition-colors text-outline hover:text-primary">
-                          <span className="material-symbols-outlined">more_vert</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
                 </tbody>
               </table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="lg:hidden divide-y divide-surface-container/50">
-              {filteredAssets.map((asset) => (
-                <div key={asset.id} className="p-4 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="material-symbols-outlined text-primary text-lg">{asset.icon}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-on-surface truncate">{asset.name}</p>
-                    <p className="text-xs text-outline font-mono">{asset.code}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <StatusBadge status={asset.status} />
-                      <span className="text-xs font-bold text-on-surface">{formatCurrency(asset.price)}</span>
-                    </div>
-                  </div>
-                  <button className="p-2 text-outline hover:text-primary">
-                    <span className="material-symbols-outlined">chevron_right</span>
-                  </button>
-                </div>
-              ))}
+              {filteredAssets.length === 0 && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-20 flex flex-col items-center justify-center text-outline"
+                >
+                  <span className="material-symbols-outlined text-6xl mb-4 opacity-20">search_off</span>
+                  <p className="font-bold">Không tìm thấy tài sản nào phù hợp</p>
+                </motion.div>
+              )}
             </div>
 
             {/* Pagination */}
-            <div className="p-4 lg:p-6 border-t border-surface-container flex flex-col sm:flex-row items-center justify-between gap-3">
-              <p className="text-xs font-bold text-outline uppercase tracking-wider">
-                Hiển thị 1 - {filteredAssets.length} của {summaryStats.totalAssets.toLocaleString("vi-VN")} tài sản
+            <div className="p-8 border-t border-surface-container/50 flex flex-col sm:flex-row items-center justify-between gap-6 bg-surface-container-lowest/30">
+              <p className="text-[10px] font-black text-outline uppercase tracking-widest">
+                Showing <span className="text-primary">{filteredAssets.length}</span> of {summaryStats.totalAssets} results
               </p>
               <div className="flex items-center gap-2">
-                <button className="p-2 bg-surface-container-low rounded-lg text-outline hover:text-primary disabled:opacity-50" disabled>
+                <button className="h-10 w-10 flex items-center justify-center bg-surface-container-low rounded-xl text-outline border border-surface-container-high hover:text-primary transition-all shadow-sm">
                   <span className="material-symbols-outlined">chevron_left</span>
                 </button>
-                {[1, 2, 3].map((p) => (
-                  <button
-                    key={p}
-                    className={`h-9 w-9 font-bold rounded-lg text-sm ${
-                      p === 1 ? "bg-primary text-white" : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <span className="px-2 text-outline">...</span>
-                <button className="h-9 w-9 bg-surface-container-low text-on-surface-variant font-bold rounded-lg text-sm hover:bg-surface-container">42</button>
-                <button className="p-2 bg-surface-container-low rounded-lg text-outline hover:text-primary">
+                <button className="h-10 w-10 flex items-center justify-center bg-primary text-white rounded-xl text-sm font-black shadow-lg shadow-primary/20">1</button>
+                <button className="h-10 w-10 flex items-center justify-center bg-surface-container-low rounded-xl text-sm font-bold text-outline hover:bg-surface-container transition-all">2</button>
+                <button className="h-10 w-10 flex items-center justify-center bg-surface-container-low rounded-xl text-sm font-bold text-outline hover:bg-surface-container transition-all">3</button>
+                <button className="h-10 w-10 flex items-center justify-center bg-surface-container-low rounded-xl text-outline border border-surface-container-high hover:text-primary transition-all shadow-sm">
                   <span className="material-symbols-outlined">chevron_right</span>
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Right: Insight Panel */}
-        <div className="xl:col-span-3 space-y-4">
-          {/* Dept Distribution */}
-          <div className="card p-5 lg:p-6">
-            <h4 className="text-sm font-bold text-on-surface mb-4">Phân bổ phòng ban</h4>
-            <div className="space-y-3">
-              {departments.slice(0, 5).map((dept) => (
-                <div key={dept.code}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-semibold text-on-surface-variant">{dept.name}</span>
-                    <span className="text-xs font-bold text-on-surface">{dept.assetCount}</span>
+        <div className="xl:col-span-3 space-y-6">
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white p-6 lg:p-8 rounded-[2.5rem] shadow-soft border border-surface-container/30"
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <div className="h-10 w-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500">
+                <span className="material-symbols-outlined">analytics</span>
+              </div>
+              <h4 className="text-lg font-black tracking-tighter">Insights</h4>
+            </div>
+            
+            <div className="space-y-6">
+              {departments.slice(0, 5).map((dept, i) => (
+                <div key={dept.code} className="group">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-on-surface-variant group-hover:text-primary transition-colors">{dept.name}</span>
+                    <span className="text-[10px] font-black text-outline bg-surface-container-low px-1.5 py-0.5 rounded-md">{dept.assetCount}</span>
                   </div>
-                  <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${dept.percentage}%` }} />
+                  <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${dept.percentage}%` }}
+                      transition={{ duration: 1.5, delay: 0.6 + i * 0.1 }}
+                      className={`h-full rounded-full transition-all ${i % 2 === 0 ? "bg-primary" : "bg-orange-500"}`} 
+                    />
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Top Users */}
-          <div className="card p-5 lg:p-6">
-            <h4 className="text-sm font-bold text-on-surface mb-4">Top người giữ TS</h4>
-            <div className="space-y-3">
-              {["Nguyễn Hoàng Em", "Nguyễn Văn An", "Trần Thị Bình"].map((name, i) => (
-                <div key={name} className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
-                    {name.split(" ").pop()?.[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-on-surface truncate">{name}</p>
-                    <p className="text-xs text-outline">{[5, 3, 2][i]} tài sản</p>
-                  </div>
-                </div>
-              ))}
+          <motion.div 
+             initial={{ opacity: 0, x: 20 }}
+             animate={{ opacity: 1, x: 0 }}
+             transition={{ delay: 0.4 }}
+             className="bg-primary-fixed-dim p-8 rounded-[2.5rem] text-white shadow-2xl shadow-primary/20 relative overflow-hidden group"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:scale-150 transition-transform duration-700" />
+            <div className="relative z-10">
+              <h4 className="text-lg font-black tracking-tight mb-2">Thông minh AI</h4>
+              <p className="text-xs font-semibold text-white/70 leading-relaxed mb-6">
+                Bạn có 45 tài sản sắp hết thời gian khấu hao. Hãy chuẩn bị phương án thanh lý.
+              </p>
+              <button className="w-full py-3 bg-white text-primary rounded-xl text-xs font-bold shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-all">
+                Xem danh sách
+              </button>
             </div>
-          </div>
-
-          {/* Top Value */}
-          <div className="card p-5 lg:p-6">
-            <h4 className="text-sm font-bold text-on-surface mb-4">Top giá trị cao</h4>
-            <div className="space-y-3">
-              {assets.sort((a, b) => b.price - a.price).slice(0, 3).map((a) => (
-                <div key={a.id} className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-on-surface-variant truncate flex-1 mr-2">{a.name}</p>
-                  <span className="text-xs font-bold text-primary whitespace-nowrap">{formatCurrency(a.price)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
