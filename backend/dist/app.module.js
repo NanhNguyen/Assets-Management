@@ -13,6 +13,7 @@ const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const supabase_module_1 = require("./supabase/supabase.module");
 const assets_module_1 = require("./assets/assets.module");
+const auth_module_1 = require("./auth/auth.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -22,6 +23,7 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({ isGlobal: true }),
             supabase_module_1.SupabaseModule,
             assets_module_1.AssetsModule,
+            auth_module_1.AuthModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

@@ -1,7 +1,59 @@
 import { Asset, AuditLog } from "./mockData";
 
+const BASE_URL = "http://localhost:3002";
+
+export async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const isClient = typeof window !== "undefined";
+  let accessToken = isClient ? localStorage.getItem("accessToken") : null;
+  const headers = new Headers(options.headers || {});
+  
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  let res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: "no-store" });
+
+  // Handle 401 Unauthorized
+  if (res.status === 401 && isClient) {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) {
+      localStorage.removeItem("accessToken");
+      window.location.href = "/login";
+      throw new Error("Phiên đăng nhập đã hết hạn.");
+    }
+
+    try {
+      const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!refreshRes.ok) {
+        throw new Error("Refresh token expired");
+      }
+
+      const newTokens = await refreshRes.json();
+      localStorage.setItem("accessToken", newTokens.accessToken);
+      localStorage.setItem("refreshToken", newTokens.refreshToken);
+      accessToken = newTokens.accessToken;
+
+      // Retry original request
+      headers.set("Authorization", `Bearer ${accessToken}`);
+      res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: "no-store" });
+    } catch (e) {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      window.location.href = "/login";
+      throw new Error("Phiên đăng nhập đã hết hạn.");
+    }
+  }
+
+  return res;
+}
+
 export async function fetchAssets(): Promise<Asset[]> {
-  const res = await fetch("http://localhost:3002/api/assets", { cache: "no-store" });
+  const res = await fetchWithAuth("/api/assets");
   if (!res.ok) throw new Error("Failed to fetch assets");
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
@@ -30,7 +82,7 @@ export async function fetchAssets(): Promise<Asset[]> {
 }
 
 export async function fetchAuditLogs(): Promise<AuditLog[]> {
-  const res = await fetch("http://localhost:3002/api/audit-logs", { cache: "no-store" });
+  const res = await fetchWithAuth("/api/audit-logs");
   if (!res.ok) throw new Error("Failed to fetch audit logs");
   const json = await res.json();
   if (!json.success) throw new Error(json.error);

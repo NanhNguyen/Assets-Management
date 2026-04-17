@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
-import PageTransition from "@/components/PageTransition";
+import ClientLayout from "@/components/ClientLayout";
 
 const inter = Inter({
   subsets: ["latin", "vietnamese"],
@@ -34,17 +32,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased bg-background text-on-surface">
-        <div className="flex">
-          <Sidebar />
-          <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
-            <Header />
-            <PageTransition>
-              <main className="p-4 lg:p-10 max-w-[1600px] mx-auto w-full">
-                {children}
-              </main>
-            </PageTransition>
-          </div>
-        </div>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
