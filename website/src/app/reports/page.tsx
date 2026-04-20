@@ -8,6 +8,9 @@ import { useState, useEffect, useMemo } from "react";
 export default function ReportsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [depreciationYears, setDepreciationYears] = useState<number>(5);
+  const [calcMode, setCalcMode] = useState<"auto" | "manual">("auto");
+  const [manualMonthly, setManualMonthly] = useState<number>(50000000);
 
   useEffect(() => {
     fetchAssets().then(data => {
@@ -32,6 +35,17 @@ export default function ReportsPage() {
     return arr.sort((a, b) => b.count - a.count);
   }, [assets, stats.totalAssets]);
 
+  const depreciationCalc = useMemo(() => {
+    if (calcMode === "auto") {
+      const totalValue = stats.totalValue;
+      const monthlyRate = totalValue / (depreciationYears * 12);
+      const yearlyRate = totalValue / depreciationYears;
+      return { monthlyRate, yearlyRate };
+    } else {
+      return { monthlyRate: manualMonthly, yearlyRate: manualMonthly * 12 };
+    }
+  }, [stats.totalValue, depreciationYears, calcMode, manualMonthly]);
+
   if (isLoading) return <div className="flex h-64 items-center justify-center text-primary font-bold">Đang tải biểu đồ...</div>;
 
   return (
@@ -53,18 +67,31 @@ export default function ReportsPage() {
       {/* KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Tổng tài sản", value: stats.totalAssets.toLocaleString("vi-VN"), icon: "inventory_2", trend: "+12%" },
-          { label: "Tổng giá trị", value: `${(stats.totalValue / 1000000000).toFixed(1)} tỷ đ`, icon: "payments", trend: "+8%" },
-          { label: "Tỷ lệ sử dụng", value: "76.2%", icon: "pie_chart", trend: "+3%" },
-          { label: "TB khấu hao", value: "24.5%", icon: "trending_down", trend: "-2%" },
+          { label: "Tổng tài sản", value: stats.totalAssets.toLocaleString("vi-VN"), icon: "inventory_2", trend: "+12%", color: "primary" },
+          { label: "Tổng giá trị", value: `${(stats.totalValue / 1000000000).toFixed(1)} tỷ đ`, icon: "payments", trend: "+8%", color: "emerald-500" },
+          { label: "Tỷ lệ sử dụng", value: "76.2%", icon: "pie_chart", trend: "+3%", color: "orange-500" },
+          { 
+            label: "Khấu hao / tháng", 
+            value: formatCurrency(depreciationCalc.monthlyRate).replace("₫", "đ"), 
+            icon: "trending_down", 
+            trend: calcMode === "manual" ? "Nhập tay" : "-2.4%",
+            color: "red-500" 
+          },
         ].map((kpi) => (
-          <div key={kpi.label} className="card p-5 card-hover">
-            <div className="flex items-center justify-between mb-3">
-              <span className="material-symbols-outlined text-primary">{kpi.icon}</span>
-              <span className="text-xs font-bold text-status-success">{kpi.trend}</span>
+          <div key={kpi.label} className="card p-5 card-hover relative overflow-hidden group">
+            <div className={`absolute top-0 right-0 w-24 h-24 bg-${kpi.color}/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:scale-150 transition-transform`} />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className={`h-10 w-10 rounded-xl bg-surface-container flex items-center justify-center text-${kpi.color}`}>
+                  <span className="material-symbols-outlined text-xl">{kpi.icon}</span>
+                </div>
+                <span className={`text-[10px] font-black px-2 py-1 rounded-md ${kpi.trend.startsWith("+") ? "bg-status-success/10 text-status-success" : "bg-status-error/10 text-status-error"}`}>
+                  {kpi.trend}
+                </span>
+              </div>
+              <h3 className="text-xl lg:text-2xl font-black text-on-surface tracking-tighter">{kpi.value}</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-outline mt-1">{kpi.label}</p>
             </div>
-            <h3 className="text-2xl font-black text-on-surface">{kpi.value}</h3>
-            <p className="text-xs text-on-surface-variant mt-1">{kpi.label}</p>
           </div>
         ))}
       </div>
@@ -145,7 +172,7 @@ export default function ReportsPage() {
 
         {/* Right Panel: Insights and AI */}
         <div className="xl:col-span-4 space-y-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="bg-white p-6 lg:p-8 rounded-[2.5rem] shadow-soft border border-surface-container/30"
@@ -156,7 +183,7 @@ export default function ReportsPage() {
               </div>
               <h4 className="text-lg font-black tracking-tighter">Insights</h4>
             </div>
-            
+
             <div className="space-y-6">
               {departments.slice(0, 5).map((dept, i) => (
                 <div key={dept.code} className="group">
@@ -165,15 +192,89 @@ export default function ReportsPage() {
                     <span className="text-[10px] font-black text-outline bg-surface-container-low px-1.5 py-0.5 rounded-md">{dept.assetCount}</span>
                   </div>
                   <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${dept.percentage}%` }}
                       transition={{ duration: 1.5, delay: 0.2 + i * 0.1 }}
-                      className={`h-full rounded-full transition-all ${i % 2 === 0 ? "bg-primary" : "bg-orange-500"}`} 
+                      className={`h-full rounded-full transition-all ${i % 2 === 0 ? "bg-primary" : "bg-orange-500"}`}
                     />
                   </div>
                 </div>
               ))}
+            </div>
+          </motion.div>
+
+          {/* New Depreciation Calculator Card */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white p-6 lg:p-8 rounded-[2.5rem] shadow-soft border border-surface-container/30"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">calculate</span>
+              </div>
+              <h4 className="text-lg font-black tracking-tighter">Ước tính Khấu hao</h4>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex bg-surface-container-low p-1 rounded-xl border border-surface-container">
+                <button
+                  onClick={() => setCalcMode("auto")}
+                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${calcMode === "auto" ? "bg-white shadow-sm text-primary" : "text-outline"}`}
+                >
+                  Tự động
+                </button>
+                <button
+                  onClick={() => setCalcMode("manual")}
+                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${calcMode === "manual" ? "bg-white shadow-sm text-primary" : "text-outline"}`}
+                >
+                  Nhập tay
+                </button>
+              </div>
+
+              {calcMode === "auto" ? (
+                <div>
+                  <label className="text-[10px] font-black uppercase text-outline tracking-widest block mb-2">Thời gian khấu hao (Năm)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      value={depreciationYears}
+                      onChange={(e) => setDepreciationYears(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="flex-1 bg-surface-container-low border border-surface-container rounded-xl px-4 py-3 text-sm font-black focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <span className="text-xs font-bold text-on-surface-variant">năm</span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] font-black uppercase text-outline tracking-widest block mb-2">Giá trị khấu hao tháng (VNĐ)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      value={manualMonthly}
+                      onChange={(e) => setManualMonthly(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="flex-1 bg-surface-container-low border border-surface-container rounded-xl px-4 py-3 text-sm font-black focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                  <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">Dự kiến mất giá / tháng</p>
+                  <p className="text-xl font-black text-on-surface">{formatCurrency(depreciationCalc.monthlyRate)}</p>
+                </div>
+                <div className="p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10">
+                  <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Dự kiến mất giá / năm</p>
+                  <p className="text-xl font-black text-on-surface">{formatCurrency(depreciationCalc.yearlyRate)}</p>
+                </div>
+              </div>
+
+              <p className="text-[9px] text-outline leading-tight italic">
+                * Công thức: Tổng giá trị hiện tại chia cho tổng số tháng khấu hao dự kiến. Kết quả mang tính chất tham khảo cho kế hoạch tài chính.
+              </p>
             </div>
           </motion.div>
 

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(["Tất cả"]);
   const [editableAssets, setEditableAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -61,9 +61,9 @@ export default function Home() {
 
   const filterCategories = ["Tất cả", ...ASSET_GROUPS.map(g => g.name), ...ASSET_GROUPS.flatMap(g => g.categories.map(c => c.name))];
 
-  const filteredAssets = selectedCategory === "Tất cả"
+  const filteredAssets = selectedCategories.includes("Tất cả")
     ? editableAssets
-    : editableAssets.filter(a => a.category === selectedCategory || a.group === selectedCategory);
+    : editableAssets.filter(a => selectedCategories.includes(a.category) || selectedCategories.includes(a.group));
 
   const logEvent = (action: string, asset: any, extra = {}) => {
     const newLog = {
@@ -218,20 +218,37 @@ export default function Home() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="flex flex-wrap gap-2.5"
+        className="flex flex-wrap gap-4 mt-8"
       >
-        {filterCategories.map((cat: string) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${selectedCategory === cat
-                ? "bg-primary text-white border-primary shadow-primary/20"
-                : "bg-white text-outline border-surface-container-high hover:bg-surface-container-low"
+        {filterCategories.map((cat: string) => {
+          const isActive = selectedCategories.includes(cat);
+          return (
+            <button
+              key={cat}
+              onClick={() => {
+                if (cat === "Tất cả") {
+                  setSelectedCategories(["Tất cả"]);
+                } else {
+                  let newSelection = selectedCategories.filter(c => c !== "Tất cả");
+                  if (isActive) {
+                    newSelection = newSelection.filter(c => c !== cat);
+                    if (newSelection.length === 0) newSelection = ["Tất cả"];
+                  } else {
+                    newSelection = [...newSelection, cat];
+                  }
+                  setSelectedCategories(newSelection);
+                }
+              }}
+              className={`px-8 py-3 rounded-2xl text-xs font-black transition-all uppercase tracking-widest ${
+                isActive
+                  ? "bg-primary text-white shadow-xl shadow-primary/30 active:scale-95"
+                  : "bg-surface-container hover:bg-surface-container-high text-outline active:scale-95"
               }`}
-          >
-            {cat}
-          </button>
-        ))}
+            >
+              {cat}
+            </button>
+          );
+        })}
       </motion.div>
 
       {/* View Content */}
@@ -617,7 +634,7 @@ export default function Home() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-outline ml-1">Mã Nhóm</label>
-                      <input readOnly className="input-field !rounded-2xl font-mono bg-surface-container-low" placeholder="VD: 12" value={newAssetForm.groupCode} />
+                      <input className="input-field !rounded-2xl font-mono" placeholder="VD: 12" value={newAssetForm.groupCode} onChange={e => setNewAssetForm({ ...newAssetForm, groupCode: e.target.value })} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-outline ml-1">Số lượng (SL)</label>
@@ -645,7 +662,7 @@ export default function Home() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-outline ml-1">Mã Loại</label>
-                      <input readOnly className="input-field !rounded-2xl font-mono bg-surface-container-low" placeholder="VD: 12.03" value={newAssetForm.categoryCode} />
+                      <input className="input-field !rounded-2xl font-mono" placeholder="VD: 12.03" value={newAssetForm.categoryCode} onChange={e => setNewAssetForm({ ...newAssetForm, categoryCode: e.target.value })} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-outline ml-1 text-primary">Tên tài sản/CCDC *</label>

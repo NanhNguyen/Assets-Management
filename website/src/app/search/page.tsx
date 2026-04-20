@@ -107,11 +107,23 @@ export default function SearchPage() {
   };
 
   const filteredAssets = assets.filter((a) => {
-    const matchesSearch =
-      !searchQuery ||
-      a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.user.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const searchFields = [
+      a.name,
+      a.code,
+      a.user,
+      a.technicalSpecs,
+      a.vendor,
+      a.notes,
+      a.handoverMinutesNo,
+      a.group,
+      a.category,
+      a.manufacturer,
+      a.position,
+      a.department
+    ].map(f => (f || "").toLowerCase());
+
+    const matchesSearch = !searchQuery || searchFields.some(field => field.includes(q));
     const matchesFilter = activeFilter === "all" || a.status === activeFilter;
     return matchesSearch && matchesFilter;
   });
@@ -124,7 +136,7 @@ export default function SearchPage() {
   return (
     <div className="space-y-8 pb-10">
       {/* Page Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
@@ -135,7 +147,7 @@ export default function SearchPage() {
             Trung tâm Tra cứu
           </h2>
         </div>
-        
+
         <div className="flex bg-surface-container-low rounded-2xl p-1.5 border border-surface-container-high/50 shadow-inner">
           <button
             onClick={() => setActiveTab("assets")}
@@ -165,7 +177,7 @@ export default function SearchPage() {
           { label: "Tổng giá trị", val: `${(stats.totalValue / 1000000000).toFixed(1)} tỷ đ`, extra: "VNĐ", icon: "payments", color: "sky" },
           { label: "Người sử dụng", val: personnel.length, extra: "nhân sự", icon: "group", color: "violet" }
         ].map((s, i) => (
-          <motion.div 
+          <motion.div
             key={s.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -192,7 +204,7 @@ export default function SearchPage() {
       {/* Main Content */}
       <div className="grid grid-cols-1 gap-8">
         <div className="space-y-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-[2.5rem] shadow-soft border border-surface-container/30 overflow-hidden"
@@ -210,7 +222,7 @@ export default function SearchPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              
+
               {activeTab === "assets" && (
                 <div className="flex flex-wrap items-center gap-3">
                   {[
@@ -224,11 +236,10 @@ export default function SearchPage() {
                       key={f.key}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setActiveFilter(f.key)}
-                      className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                        activeFilter === f.key 
-                          ? "bg-primary text-white shadow-primary/20 scale-105" 
+                      className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${activeFilter === f.key
+                          ? "bg-primary text-white shadow-primary/20 scale-105"
                           : "bg-surface-container-low text-outline hover:bg-surface-container border border-surface-container-high"
-                      }`}
+                        }`}
                     >
                       {f.label}
                     </motion.button>
@@ -258,7 +269,7 @@ export default function SearchPage() {
                     </thead>
                     <tbody className="divide-y divide-surface-container/30">
                       {filteredAssets.map((asset, idx) => (
-                        <motion.tr 
+                        <motion.tr
                           key={asset.id}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
@@ -317,12 +328,12 @@ export default function SearchPage() {
                       </div>
                       <h3 className="text-lg font-black text-on-surface mb-1">{person.name}</h3>
                       <p className="text-xs font-bold text-outline mb-6">{person.position}</p>
-                      
+
                       <div className="space-y-2 mb-6 bg-white p-4 rounded-2xl border border-surface-container-low shadow-inner">
                         <p className="text-[10px] font-black uppercase text-outline tracking-widest mb-2 font-mono">Assets Assigned</p>
                         {person.assets.slice(0, 5).map((asset: any) => (
-                          <div 
-                            key={asset.id} 
+                          <div
+                            key={asset.id}
                             className="flex items-center gap-2 hover:bg-primary/5 p-1 rounded-lg cursor-pointer transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -330,15 +341,15 @@ export default function SearchPage() {
                               setIsModalOpen(true);
                             }}
                           >
-                             <span className="material-symbols-outlined text-sm text-primary">{asset.icon}</span>
-                             <span className="text-xs font-bold text-on-surface-variant truncate">{asset.name}</span>
+                            <span className="material-symbols-outlined text-sm text-primary">{asset.icon}</span>
+                            <span className="text-xs font-bold text-on-surface-variant truncate">{asset.name}</span>
                           </div>
                         ))}
                         {person.assets.length > 2 && (
                           <p className="text-[10px] font-bold text-primary">... và {person.assets.length - 2} tài sản khác</p>
                         )}
                       </div>
-                      
+
                       <button className="w-full py-3 bg-surface-container text-outline rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all">
                         Chi tiết bàn giao
                       </button>
@@ -386,7 +397,7 @@ export default function SearchPage() {
                       <p className="text-xs font-bold text-outline uppercase tracking-widest">{selectedAsset?.category}</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setIsModalOpen(false)}
                     className="h-10 w-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-outline transition-all"
                   >
@@ -401,7 +412,7 @@ export default function SearchPage() {
                       <p className="text-[10px] font-black text-outline uppercase tracking-widest">Trạng thái hiện tại</p>
                       <div className="flex items-center gap-3">
                         <StatusBadge status={selectedAsset?.status} />
-                        <button 
+                        <button
                           onClick={() => setIsStatusUpdateOpen(!isStatusUpdateOpen)}
                           className="text-[10px] font-bold text-primary hover:underline"
                         >
@@ -409,7 +420,7 @@ export default function SearchPage() {
                         </button>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setIsDeleteModalOpen(true)}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-all text-xs font-bold"
                     >
@@ -419,20 +430,20 @@ export default function SearchPage() {
                   </div>
 
                   {isStatusUpdateOpen && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       className="p-4 bg-surface-container-low rounded-2xl border border-primary/20"
                     >
                       <p className="text-[10px] font-black mb-3">Chọn trạng thái mới:</p>
                       <div className="flex gap-2">
-                        <button 
+                        <button
                           onClick={() => handleUpdateStatus(selectedAsset?.id, "active")}
                           className="flex-1 py-2 rounded-lg bg-green-600 text-white text-[10px] font-bold"
                         >
                           Đang sử dụng
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleUpdateStatus(selectedAsset?.id, "unused")}
                           className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-[10px] font-bold"
                         >
@@ -457,7 +468,7 @@ export default function SearchPage() {
                       </p>
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-bold text-on-surface">{formatDate(selectedAsset?.warrantyEnd)}</p>
-                        <button 
+                        <button
                           onClick={() => setIsWarrantyUpdateOpen(!isWarrantyUpdateOpen)}
                           className="material-symbols-outlined text-sm text-primary opacity-0 group-hover/warranty:opacity-100 transition-opacity"
                         >
@@ -469,19 +480,19 @@ export default function SearchPage() {
                   </div>
 
                   {isWarrantyUpdateOpen && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       className="p-4 bg-surface-container-low rounded-2xl border border-primary/20"
                     >
                       <p className="text-[10px] font-black mb-2">Ngày hết hạn bảo hành mới:</p>
                       <div className="flex gap-2">
-                        <input 
+                        <input
                           type="date"
                           className="flex-1 bg-white border border-surface-container rounded-lg px-3 py-2 text-xs"
                           onChange={(e) => setNewWarrantyDate(e.target.value)}
                         />
-                        <button 
+                        <button
                           onClick={() => handleUpdateWarranty(selectedAsset?.id)}
                           className="px-4 py-2 bg-primary text-white text-[10px] font-bold rounded-lg"
                         >
@@ -562,11 +573,11 @@ export default function SearchPage() {
             >
               <h3 className="text-xl font-black text-on-surface mb-2">Xác nhận xóa tài sản</h3>
               <p className="text-sm text-outline mb-6">Bạn đang thực hiện xóa <b>{selectedAsset?.name}</b>. Hành động này sẽ được ghi nhật ký hệ thống bởi <b>{currentUser}</b>.</p>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-primary mb-2 block">Lý do xóa tài sản (Bắt buộc)</label>
-                  <textarea 
+                  <textarea
                     className="w-full bg-surface-container-low border border-surface-container rounded-2xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
                     placeholder="VD: Tài sản đã hư hỏng không thể sửa chữa, hoặc đã thanh lý..."
                     rows={4}
@@ -574,15 +585,15 @@ export default function SearchPage() {
                     onChange={(e) => setDeleteReason(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="flex gap-3 pt-2">
-                  <button 
+                  <button
                     onClick={() => setIsDeleteModalOpen(false)}
                     className="flex-1 py-4 font-bold text-outline hover:text-on-surface transition-colors"
                   >
                     Hủy bỏ
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleDeleteAsset(selectedAsset?.id)}
                     className="flex-1 py-4 bg-red-600 text-white font-black rounded-2xl shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all"
                   >

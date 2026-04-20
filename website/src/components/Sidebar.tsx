@@ -18,11 +18,6 @@ export default function Sidebar() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    router.push("/login");
-  };
 
   const sidebarContent = (
     <>
@@ -84,24 +79,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Logout Navigation Item */}
-      <nav className="mt-4 flex flex-col gap-1.5 border-t border-surface-container pt-4">
-        <button
-          onClick={handleLogout}
-          className="relative group outline-none w-full text-left"
-        >
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3 px-5 py-3.5 text-sm font-bold rounded-2xl transition-all text-status-error hover:bg-status-error/10 hover:shadow-sm"
-          >
-            <span className="material-symbols-outlined text-xl transition-transform group-hover:scale-110">
-              logout
-            </span>
-            <span>Đăng xuất</span>
-          </motion.div>
-        </button>
-      </nav>
 
       {/* Bottom Section */}
       <motion.div
