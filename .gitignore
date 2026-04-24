@@ -42,3 +42,4 @@ app_detail.md
 /website/.next/
 /website/out/
 /website/build/
+website/.env
