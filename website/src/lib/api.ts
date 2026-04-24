@@ -1,140 +1,142 @@
-import { Asset, AuditLog } from "./mockData";
+import { formatCurrency, formatDate, type Asset, DEPARTMENTS, CATEGORIES } from "./mockData";
 
-const BASE_URL = "http://localhost:3002";
+const API_URL = "http://localhost:3002/api";
 
-export async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const isClient = typeof window !== "undefined";
-  let accessToken = isClient ? localStorage.getItem("accessToken") : null;
-  const headers = new Headers(options.headers || {});
-  
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
+export const fetchAssets = async (): Promise<Asset[]> => {
+  const token = localStorage.getItem("accessToken");
+  const response = await fetch(`${API_URL}/assets`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || "Failed to fetch assets");
   }
 
-  let res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: "no-store" });
-
-  // Handle 401 Unauthorized
-  if (res.status === 401 && isClient) {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (!refreshToken) {
-      localStorage.removeItem("accessToken");
-      window.location.href = "/login";
-      throw new Error("Phiên đăng nhập đã hết hạn.");
-    }
-
-    try {
-      const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      if (!refreshRes.ok) {
-        throw new Error("Refresh token expired");
-      }
-
-      const newTokens = await refreshRes.json();
-      localStorage.setItem("accessToken", newTokens.accessToken);
-      localStorage.setItem("refreshToken", newTokens.refreshToken);
-      accessToken = newTokens.accessToken;
-
-      // Retry original request
-      headers.set("Authorization", `Bearer ${accessToken}`);
-      res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: "no-store" });
-    } catch (e) {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      window.location.href = "/login";
-      throw new Error("Phiên đăng nhập đã hết hạn.");
-    }
-  }
-
-  return res;
-}
-
-export async function fetchAssets(): Promise<Asset[]> {
-  const res = await fetchWithAuth("/api/assets");
-  if (!res.ok) throw new Error("Failed to fetch assets");
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error);
-  
-  return json.data.map((row: any) => ({
+  return data.data.map((row: any) => ({
     id: row.id,
     code: row.code,
     name: row.name,
     category: row.category,
-    group: row.group_name,
+    group_name: row.group_name,
     manufacturer: row.manufacturer,
-    user: row.assigned_user,
+    user: row.assigned_user || "Chưa bàn giao",
     department: row.department,
     position: row.position,
     status: row.status,
     price: Number(row.price),
     purchaseDate: row.purchase_date,
+    handoverDate: row.handover_date || row.purchase_date,
+    handoverMinutesNo: row.handover_minutes_no || "",
     vendor: row.vendor,
     warrantyEnd: row.warranty_end,
-    depreciationYears: row.depreciation_years,
-    depreciationRate: Number(row.depreciation_rate),
+    depreciation_months: row.depreciation_months || "0",
     notes: row.notes,
-    icon: row.icon,
-    iconColor: row.icon_color,
+    icon: row.icon || "inventory_2",
+    iconColor: row.icon_color || "indigo",
   }));
-}
+};
 
-export async function fetchAuditLogs(): Promise<AuditLog[]> {
-  const res = await fetchWithAuth("/api/audit-logs");
-  if (!res.ok) throw new Error("Failed to fetch audit logs");
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error);
-
-  return json.data.map((row: any) => ({
-    id: row.id,
-    timestamp: row.created_at,
-    action: row.action,
-    assetName: row.asset_name,
-    assetCode: row.asset_code,
-    field: row.field,
-    oldValue: row.old_value,
-    newValue: row.new_value,
-    user: row.user_email,
-    description: row.description,
-    reason: row.reason,
-  }));
-}
-
-export function generateSummaryStats(assets: Asset[]) {
-  const departmentsMap = new Map();
-  const usersSet = new Set();
-  let totalValue = 0;
-  let inUse = 0, unused = 0, maintenance = 0, liquidated = 0;
-
-  assets.forEach(a => {
-    totalValue += a.price;
-    usersSet.add(a.user);
-    if (a.status === "active") inUse++;
-    else if (a.status === "unused") unused++;
-    else if (a.status === "maintenance") maintenance++;
-    else if (a.status === "liquidated") liquidated++;
-
-    if (!departmentsMap.has(a.department)) {
-      departmentsMap.set(a.department, { name: a.department, code: a.department, assetCount: 0, totalValue: 0, percentage: 0 });
-    }
-    const d = departmentsMap.get(a.department);
-    d.assetCount++;
-    d.totalValue += a.price;
+export const fetchAuditLogs = async () => {
+  const token = localStorage.getItem("accessToken");
+  const response = await fetch(`${API_URL}/audit-logs`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 
-  const departmentsArray = Array.from(departmentsMap.values());
-  departmentsArray.forEach(d => {
-    d.percentage = totalValue > 0 ? (d.totalValue / totalValue) * 100 : 0;
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || "Failed to fetch audit logs");
+  }
+
+  return data.data;
+};
+
+export const createAsset = async (assetData: any): Promise<Asset> => {
+  const token = localStorage.getItem("accessToken");
+  const response = await fetch(`${API_URL}/assets`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(assetData),
   });
+
+  const row = await response.json();
+  if (!row.success) {
+    throw new Error(row.error || "Failed to create asset");
+  }
+
+  const data = row.data;
+  return {
+    id: data.id,
+    code: data.code,
+    name: data.name,
+    category: data.category,
+    group_name: data.group_name,
+    manufacturer: data.manufacturer,
+    user: data.assigned_user || "Chưa bàn giao",
+    department: data.department,
+    position: data.position,
+    status: data.status,
+    price: Number(data.price),
+    purchaseDate: data.purchase_date,
+    handoverDate: data.handover_date || data.purchase_date,
+    handoverMinutesNo: data.handover_minutes_no || "",
+    vendor: data.vendor,
+    warrantyEnd: data.warranty_end,
+    depreciation_months: data.depreciation_months || "0",
+    notes: data.notes,
+    icon: data.icon || "inventory_2",
+    iconColor: data.icon_color || "indigo",
+  };
+};
+
+export const generateSummaryStats = (assets: Asset[]) => {
+  const totalValue = assets.reduce((sum, asset) => sum + asset.price, 0);
+  const totalAssets = assets.length;
+  
+  const deptMap = assets.reduce((acc, asset) => {
+    acc[asset.department] = (acc[asset.department] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const sortedDeps = Object.entries(deptMap)
+    .map(([name, count]) => ({
+      name,
+      assetCount: count,
+      code: name.toLowerCase().replace(/\s+/g, '-'),
+      percentage: (count / (totalAssets || 1)) * 100
+    }))
+    .sort((a, b) => b.assetCount - a.assetCount);
 
   return {
-    totalAssets: assets.length,
     totalValue,
-    activeUsers: usersSet.size,
-    departmentsCount: departmentsMap.size,
-    inUse, unused, maintenance, liquidated,
-    departments: departmentsArray.sort((a, b) => b.totalValue - a.totalValue)
+    totalAssets,
+    departments: sortedDeps
   };
-}
+};
+
+export const getStats = (assets: Asset[]) => {
+  const totalValue = assets.reduce((sum, asset) => sum + asset.price, 0);
+  const totalAssets = assets.length;
+  
+  const statusCounts = assets.reduce((acc, asset) => {
+    acc[asset.status] = (acc[asset.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return {
+    totalValue,
+    totalAssets,
+    statusCounts,
+    activeAssets: statusCounts['active'] || 0,
+    maintenanceAssets: statusCounts['maintenance'] || 0,
+    brokenAssets: statusCounts['broken'] || 0,
+    liquidationAssets: statusCounts['liquidation'] || 0,
+  };
+};

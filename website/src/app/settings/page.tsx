@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { departments } from "@/lib/mockData";
+import { DEPARTMENTS } from "@/lib/mockData";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -146,7 +146,7 @@ export default function SettingsPage() {
                     value={userProfile.department}
                     onChange={e => setUserProfile({ ...userProfile, department: e.target.value })}
                   >
-                    {departments.map(d => <option key={d.code} value={d.name}>{d.name}</option>)}
+                    {DEPARTMENTS.filter(d => d !== "Tất cả").map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
               </div>

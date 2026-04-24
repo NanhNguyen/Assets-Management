@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
@@ -17,6 +17,36 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const stored = localStorage.getItem("currentUser");
+    if (stored) {
+      try {
+        const user = JSON.parse(stored);
+        setUserRole(user.role);
+      } catch (e) {
+        console.error("Parse error", e);
+      }
+    }
+  }, []);
+
+  console.log("Current Sidebar Role:", userRole);
+
+  const baseNavItems = [
+    { href: "/", label: "Tài sản", icon: "account_balance_wallet" },
+    { href: "/search", label: "Tra cứu", icon: "search_insights" },
+    { href: "/audit", label: "Lịch sử", icon: "history_edu" },
+    { href: "/reports", label: "Báo cáo", icon: "assessment" },
+  ];
+
+  const footerNavItems = [
+    { href: "/settings", label: "Cài đặt", icon: "settings" },
+  ];
+
+  const finalNavItems = [...baseNavItems, ...footerNavItems];
 
 
   const sidebarContent = (
@@ -37,7 +67,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-1.5">
-        {navItems.map((item, idx) => {
+        {finalNavItems.map((item, idx) => {
           const isActive = pathname === item.href;
           return (
             <Link

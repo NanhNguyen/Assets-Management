@@ -1,5 +1,8 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { RolesGuard } from './roles.guard';
+import { Roles } from './roles.decorator';
 
 @Controller('api/auth')
 export class AuthController {
@@ -13,5 +16,18 @@ export class AuthController {
   @Post('refresh')
   refresh(@Body() body: any) {
     return this.authService.refreshToken(body.refreshToken);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('create-user')
+  async createUser(@Request() req: any, @Body() userData: any) {
+    return this.authService.registerByAdmin(req.user.sub, userData);
+  }
+  
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMe(@Request() req: any) {
+    return req.user;
   }
 }

@@ -20,4 +20,13 @@ export declare class AssetsController {
         error: any;
         data?: undefined;
     }>;
+    createAsset(assetData: any): Promise<{
+        success: boolean;
+        data: any;
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        data?: undefined;
+    }>;
 }

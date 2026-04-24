@@ -4,4 +4,5 @@ export declare class AssetsService {
     constructor(supabaseService: SupabaseService);
     getAllAssets(): Promise<any[]>;
     getAuditLogs(): Promise<any[]>;
+    createAsset(assetData: any): Promise<any>;
 }

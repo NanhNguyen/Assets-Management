@@ -39,6 +39,37 @@ let AssetsService = class AssetsService {
         }
         return data;
     }
+    async createAsset(assetData) {
+        const { data, error } = await this.supabaseService
+            .getClient()
+            .from('assets')
+            .insert([
+            {
+                code: assetData.code,
+                name: assetData.name,
+                category: assetData.category,
+                group_name: assetData.group_name,
+                manufacturer: assetData.manufacturer,
+                assigned_user: assetData.user,
+                department: assetData.department,
+                position: assetData.position,
+                status: assetData.status || 'active',
+                price: Number(assetData.price),
+                purchase_date: assetData.purchaseDate,
+                vendor: assetData.vendor,
+                warranty_end: assetData.warrantyEnd,
+                depreciation_months: assetData.depreciation_months,
+                notes: assetData.notes,
+                icon: assetData.icon,
+                icon_color: assetData.iconColor,
+            },
+        ])
+            .select();
+        if (error) {
+            throw new Error(error.message);
+        }
+        return data[0];
+    }
 };
 exports.AssetsService = AssetsService;
 exports.AssetsService = AssetsService = __decorate([

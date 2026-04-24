@@ -17,6 +17,7 @@ export default function AuditPage() {
   
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [deletedAssets, setDeletedAssets] = useState<any[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState("Tất cả");
 
   useEffect(() => {
     // Fetch logs from DB
@@ -35,6 +36,12 @@ export default function AuditPage() {
       setDeletedAssets(JSON.parse(savedDeleted));
     }
   }, []);
+
+  const filteredLogs = logs.filter(log => {
+    if (selectedFilter === "Tất cả") return true;
+    const actionLabel = actionConfig[log.action]?.label || "Chỉnh sửa";
+    return actionLabel === selectedFilter;
+  });
 
   return (
     <div className="space-y-8 pb-10">
@@ -89,11 +96,12 @@ export default function AuditPage() {
           >
             {/* Filters */}
             <div className="flex flex-wrap gap-2.5">
-              {["Tất cả", "Tạo mới", "Chỉnh sửa", "Xóa", "Xuất dữ liệu"].map((f, i) => (
+              {["Tất cả", "Tạo mới", "Chỉnh sửa", "Xóa", "Xuất dữ liệu"].map((f) => (
                 <button 
                   key={f} 
+                  onClick={() => setSelectedFilter(f)}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
-                    i === 0 
+                    selectedFilter === f
                       ? "bg-primary text-white border-primary shadow-primary/20" 
                       : "bg-white text-outline border-surface-container-high hover:bg-surface-container-low"
                   }`}
@@ -109,10 +117,13 @@ export default function AuditPage() {
               </div>
               
               <div className="space-y-1 relative z-10">
-                {logs.map((log, index) => {
+                {filteredLogs.map((log, index) => {
                   const config = actionConfig[log.action] || actionConfig.edit;
                   const time = new Date(log.timestamp);
-                  const timeStr = time.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                  const isValid = !isNaN(time.getTime());
+                  const timeStr = isValid 
+                    ? time.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+                    : "--:--";
                   const dateStr = formatDate(log.timestamp);
 
                   return (
@@ -180,9 +191,9 @@ export default function AuditPage() {
                           </span>
                           <div className="flex items-center gap-2">
                             <div className="h-5 w-5 rounded-full bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-outline uppercase">
-                               {log.user[0]}
+                               {log.user ? log.user[0] : 'S'}
                             </div>
-                            <span className="text-xs font-bold text-outline">by {log.user}</span>
+                            <span className="text-xs font-bold text-outline">by {log.user || 'System'}</span>
                           </div>
                         </div>
                       </div>
@@ -276,7 +287,7 @@ export default function AuditPage() {
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-primary/70">Security Protocol</p>
           <p className="text-xs font-bold text-on-surface-variant leading-relaxed mt-0.5">
-            Audit log là tài liệu pháp lý số, đảm bảo tính bất biến của mọi lịch sử thay đổi tài sản.
+            Nhật ký hoạt động là tài liệu pháp lý số, đảm bảo tính bất biến của mọi lịch sử thay đổi tài sản.
           </p>
         </div>
       </motion.div>
