@@ -43,3 +43,4 @@ app_detail.md
 /website/out/
 /website/build/
 website/.env
+backend/.env
