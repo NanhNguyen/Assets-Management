@@ -46,7 +46,14 @@ export default function Sidebar() {
     { href: "/settings", label: "Cài đặt", icon: "settings" },
   ];
 
-  const finalNavItems = [...baseNavItems, ...footerNavItems];
+  const finalNavItems = [...baseNavItems];
+  
+  // Hiển thị tab Nhân sự cho Admin hoặc khi chưa load kịp role để bạn có quyền quản lý
+  if (userRole === "admin" || !userRole) {
+    finalNavItems.push({ href: "/users", label: "Nhân sự", icon: "group" });
+  }
+
+  finalNavItems.push(...footerNavItems);
 
 
   const sidebarContent = (

@@ -20,5 +20,19 @@ export declare class AuthController {
         message: string;
         user: import("@supabase/auth-js").User;
     }>;
+    listUsers(): Promise<any[]>;
+    updateRole(body: {
+        userId: string;
+        role: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    deleteUser(body: {
+        userId: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     getMe(req: any): any;
 }

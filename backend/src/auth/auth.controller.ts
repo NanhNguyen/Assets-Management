@@ -24,6 +24,27 @@ export class AuthController {
   async createUser(@Request() req: any, @Body() userData: any) {
     return this.authService.registerByAdmin(req.user.sub, userData);
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('users')
+  async listUsers() {
+    return this.authService.getAllUsers();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('update-role')
+  async updateRole(@Body() body: { userId: string, role: string }) {
+    return this.authService.updateUserRole(body.userId, body.role);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('delete-user')
+  async deleteUser(@Body() body: { userId: string }) {
+    return this.authService.deleteUser(body.userId);
+  }
   
   @UseGuards(JwtAuthGuard)
   @Get('me')

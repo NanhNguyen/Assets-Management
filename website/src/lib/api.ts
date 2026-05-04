@@ -1,18 +1,61 @@
 import { formatCurrency, formatDate, type Asset, DEPARTMENTS, CATEGORIES } from "./mockData";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
-export const fetchAssets = async (): Promise<Asset[]> => {
-  const token = localStorage.getItem("accessToken");
-  const response = await fetch(`${API_URL}/assets`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  let token = localStorage.getItem("accessToken");
+  
+  const getHeaders = (t: string | null) => ({
+    ...options.headers,
+    ...(t ? { Authorization: `Bearer ${t}` } : {}),
   });
 
+  let response = await fetch(url, { ...options, headers: getHeaders(token) });
+
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
+
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json();
+        if (data.accessToken && data.refreshToken) {
+          localStorage.setItem("accessToken", data.accessToken);
+          localStorage.setItem("refreshToken", data.refreshToken);
+          token = data.accessToken;
+          // Retry original request
+          response = await fetch(url, { ...options, headers: getHeaders(token) });
+        } else {
+          // Refresh failed
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          window.location.href = '/login';
+        }
+      } else {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        window.location.href = '/login';
+      }
+    } else {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      window.location.href = '/login';
+    }
+  }
+
+  return response;
+}
+
+export const fetchAssets = async (): Promise<Asset[]> => {
+  const response = await fetchWithAuth(`${API_URL}/assets`);
+
   const data = await response.json();
-  if (!data.success) {
-    throw new Error(data.error || "Failed to fetch assets");
+  if (response.status === 401 || !data.success) {
+    throw new Error(data?.error || "Failed to fetch assets");
   }
 
   return data.data.map((row: any) => ({
@@ -40,35 +83,40 @@ export const fetchAssets = async (): Promise<Asset[]> => {
 };
 
 export const fetchAuditLogs = async () => {
-  const token = localStorage.getItem("accessToken");
-  const response = await fetch(`${API_URL}/audit-logs`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await fetchWithAuth(`${API_URL}/audit-logs`);
 
   const data = await response.json();
-  if (!data.success) {
-    throw new Error(data.error || "Failed to fetch audit logs");
+  if (response.status === 401 || !data.success) {
+    throw new Error(data?.error || "Failed to fetch audit logs");
   }
 
-  return data.data;
+  return data.data.map((log: any) => ({
+    id: log.id,
+    action: log.action,
+    assetName: log.asset_name || log.assetName,
+    assetCode: log.asset_code || log.assetCode,
+    description: log.description,
+    timestamp: log.created_at || log.timestamp,
+    user: log.user,
+    reason: log.reason,
+    field: log.field,
+    oldValue: log.old_value || log.oldValue,
+    newValue: log.new_value || log.newValue,
+  }));
 };
 
 export const createAsset = async (assetData: any): Promise<Asset> => {
-  const token = localStorage.getItem("accessToken");
-  const response = await fetch(`${API_URL}/assets`, {
+  const response = await fetchWithAuth(`${API_URL}/assets`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(assetData),
   });
 
   const row = await response.json();
-  if (!row.success) {
-    throw new Error(row.error || "Failed to create asset");
+  if (response.status === 401 || !row.success) {
+    throw new Error(row?.error || "Failed to create asset");
   }
 
   const data = row.data;

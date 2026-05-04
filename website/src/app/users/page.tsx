@@ -38,7 +38,25 @@ export default function UsersPage() {
     role: "auditor"
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
   const [message, setMessage] = useState({ type: "", text: "" });
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch(`${API_URL}/auth/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data);
+      }
+    } catch (err) {
+      console.error("Lỗi lấy danh sách user:", err);
+    }
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem("currentUser");
@@ -48,11 +66,53 @@ export default function UsersPage() {
         router.push("/");
       } else {
         setIsAdmin(true);
+        fetchUsers();
       }
     } else {
       router.push("/login");
     }
   }, [router]);
+
+  const handleUpdateRole = async (userId: string, role: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch(`${API_URL}/auth/update-role`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId, role })
+      });
+      if (res.ok) {
+        fetchUsers();
+        setMessage({ type: "success", text: "Cập nhật quyền thành công!" });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Lỗi cập nhật quyền" });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa tài khoản này không?")) return;
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch(`${API_URL}/auth/delete-user`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId })
+      });
+      if (res.ok) {
+        fetchUsers();
+        setMessage({ type: "success", text: "Đã xóa tài khoản thành công!" });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Lỗi xóa tài khoản" });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +121,7 @@ export default function UsersPage() {
 
     try {
       const token = localStorage.getItem("accessToken");
-      const res = await fetch("http://localhost:3002/api/auth/create-user", {
+      const res = await fetch(`${API_URL}/auth/create-user`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -75,6 +135,7 @@ export default function UsersPage() {
 
       setMessage({ type: "success", text: "Cấp tài khoản thành công!" });
       setFormData({ email: "", password: "", fullName: "", role: "auditor" });
+      fetchUsers();
     } catch (err: any) {
       setMessage({ type: "error", text: err.message });
     } finally {
@@ -224,6 +285,88 @@ export default function UsersPage() {
           </div>
         </div>
       </div>
+
+      {/* User List Table */}
+      <section className="space-y-6">
+        <header className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-black text-on-surface">Danh sách nhân sự</h3>
+            <p className="text-xs font-bold text-outline uppercase tracking-widest mt-1">Quản lý quyền hạn & Trạng thái</p>
+          </div>
+          <div className="px-4 py-2 bg-surface-container-low rounded-full border border-surface-container text-xs font-bold">
+            Tổng cộng: {users.length} thành viên
+          </div>
+        </header>
+
+        <div className="card overflow-hidden border-none shadow-xl shadow-black/[0.02]">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-surface-container-low border-b border-surface-container">
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-outline">Thành viên</th>
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-outline">Phân quyền</th>
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-outline">Ngày tạo</th>
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-outline text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-container">
+              <AnimatePresence>
+                {users.map((user) => (
+                  <motion.tr 
+                    key={user.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="hover:bg-primary/[0.02] transition-colors"
+                  >
+                    <td className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center text-primary font-black uppercase">
+                          {user.full_name?.charAt(0) || user.email.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-on-surface">{user.full_name || "Chưa đặt tên"}</p>
+                          <p className="text-xs font-medium text-outline">{user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-6">
+                      <select 
+                        value={user.role}
+                        onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                        className="bg-surface-container-low border border-surface-container rounded-xl px-3 py-1.5 text-xs font-bold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
+                      >
+                        {ROLE_OPTIONS.map(opt => (
+                          <option key={opt.id} value={opt.id}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="p-6">
+                      <span className="text-xs font-medium text-outline">
+                        {new Date(user.created_at).toLocaleDateString('vi-VN')}
+                      </span>
+                    </td>
+                    <td className="p-6 text-right">
+                      <button 
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="h-9 w-9 rounded-xl flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
+                        title="Xóa tài khoản"
+                      >
+                        <span className="material-symbols-outlined text-xl">delete</span>
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </tbody>
+          </table>
+          {users.length === 0 && (
+            <div className="p-20 text-center space-y-4">
+              <span className="material-symbols-outlined text-4xl text-outline/30">group_off</span>
+              <p className="text-sm font-bold text-outline">Chưa có nhân sự nào trong danh sách</p>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

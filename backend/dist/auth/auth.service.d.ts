@@ -30,4 +30,13 @@ export declare class AuthService {
         message: string;
         user: import("@supabase/auth-js").User;
     }>;
+    getAllUsers(): Promise<any[]>;
+    updateUserRole(userId: string, newRole: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    deleteUser(userId: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
 }

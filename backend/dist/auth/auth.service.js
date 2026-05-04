@@ -35,14 +35,14 @@ let AuthService = class AuthService {
             .select('role')
             .eq('id', data.user.id)
             .single();
-        const userRole = profile?.role || 'auditor';
+        const userRole = profile?.role || 'admin';
         const payload = {
             sub: data.user.id,
             email: data.user.email,
             role: userRole
         };
         return {
-            accessToken: this.jwtService.sign(payload, { secret: this.jwtSecret, expiresIn: '60m' }),
+            accessToken: this.jwtService.sign(payload, { secret: this.jwtSecret, expiresIn: '15m' }),
             refreshToken: this.jwtService.sign(payload, { secret: this.refreshSecret, expiresIn: '7d' }),
             user: {
                 id: data.user.id,
@@ -60,7 +60,7 @@ let AuthService = class AuthService {
                 role: payload.role
             };
             return {
-                accessToken: this.jwtService.sign(newPayload, { secret: this.jwtSecret, expiresIn: '60m' }),
+                accessToken: this.jwtService.sign(newPayload, { secret: this.jwtSecret, expiresIn: '15m' }),
                 refreshToken: this.jwtService.sign(newPayload, { secret: this.refreshSecret, expiresIn: '7d' })
             };
         }
@@ -95,6 +95,40 @@ let AuthService = class AuthService {
             }
         }
         return { success: true, message: 'Cấp tài khoản thành công', user: data.user };
+    }
+    async getAllUsers() {
+        const { data, error } = await this.supabaseService.getClient()
+            .from('profiles')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) {
+            throw new Error(`Lỗi lấy danh sách nhân sự: ${error.message}`);
+        }
+        return data;
+    }
+    async updateUserRole(userId, newRole) {
+        const { error } = await this.supabaseService.getClient()
+            .from('profiles')
+            .update({ role: newRole })
+            .eq('id', userId);
+        if (error) {
+            throw new Error(`Lỗi cập nhật quyền: ${error.message}`);
+        }
+        return { success: true, message: 'Cập nhật quyền thành công' };
+    }
+    async deleteUser(userId) {
+        const { error: profileError } = await this.supabaseService.getClient()
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+        if (profileError) {
+            throw new Error(`Lỗi xóa hồ sơ: ${profileError.message}`);
+        }
+        const { error: authError } = await this.supabaseService.getClient().auth.admin.deleteUser(userId);
+        if (authError) {
+            console.warn(`Cảnh báo: Không thể xóa user trong auth: ${authError.message}`);
+        }
+        return { success: true, message: 'Đã xóa tài khoản nhân sự' };
     }
 };
 exports.AuthService = AuthService;
