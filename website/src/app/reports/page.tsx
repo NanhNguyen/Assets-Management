@@ -10,6 +10,7 @@ export default function ReportsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<"all" | "currentMonth" | "lastMonth">("all");
 
   useEffect(() => {
     fetchAssets().then(data => {
@@ -18,7 +19,20 @@ export default function ReportsPage() {
     }).catch(console.error);
   }, []);
 
-  const stats = useMemo(() => generateSummaryStats(assets), [assets]);
+  const filteredByMonth = useMemo(() => {
+    if (timeFilter === "all") return assets;
+    const now = new Date();
+    const targetMonth = timeFilter === "currentMonth" ? now.getMonth() : now.getMonth() - 1;
+    const targetYear = (timeFilter === "lastMonth" && now.getMonth() === 0) ? now.getFullYear() - 1 : now.getFullYear();
+    const finalMonth = targetMonth < 0 ? 11 : targetMonth;
+
+    return assets.filter(asset => {
+      const pDate = new Date(asset.purchaseDate);
+      return pDate.getMonth() === finalMonth && pDate.getFullYear() === targetYear;
+    });
+  }, [assets, timeFilter]);
+
+  const stats = useMemo(() => generateSummaryStats(filteredByMonth), [filteredByMonth]);
   const departments = stats.departments;
 
   const handleExportExcel = (type: "general" | "accounting" = "general") => {
@@ -102,13 +116,28 @@ export default function ReportsPage() {
             Báo cáo & Phân tích
           </h2>
         </div>
-        <button
-          onClick={() => setShowExportModal(true)}
-          className="btn-primary flex items-center gap-2 group"
-        >
-          <span className="material-symbols-outlined text-sm group-hover:translate-y-0.5 transition-transform">download</span>
-          Xuất Báo cáo Excel
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: "all", label: "Toàn thời gian" },
+            { id: "currentMonth", label: "Tháng này" },
+            { id: "lastMonth", label: "Tháng trước" }
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setTimeFilter(f.id as any)}
+              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeFilter === f.id ? "bg-primary text-white shadow-lg" : "bg-surface-container-low text-outline border border-surface-container hover:border-primary/20"}`}
+            >
+              {f.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="btn-primary flex items-center gap-2 group ml-4"
+          >
+            <span className="material-symbols-outlined text-sm group-hover:translate-y-0.5 transition-transform">download</span>
+            Xuất Báo cáo Excel
+          </button>
+        </div>
       </div>
 
       {/* 1. TOP ROW: PRIMARY KPI CARDS */}
@@ -244,33 +273,8 @@ export default function ReportsPage() {
         {/* Right Column: AI Analysis & Financial Planning (4 cols) */}
         <div className="lg:col-span-4 space-y-10">
           
-          {/* AI Strategy Advisor */}
-          <motion.div 
-             initial={{ opacity: 0, x: 20 }}
-             animate={{ opacity: 1, x: 0 }}
-             className="bg-primary-fixed-dim bg-gradient-to-br from-primary-fixed-dim to-primary p-10 rounded-[3rem] text-white shadow-2xl shadow-primary/20 relative overflow-hidden group"
-          >
-            <motion.div 
-               animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-               className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" 
-            />
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="h-10 w-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
-                  <span className="material-symbols-outlined text-emerald-300 text-xl">auto_awesome</span>
-                </div>
-                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white/70">Advisor Insight</h4>
-              </div>
-              <h3 className="text-2xl font-black mb-4 tracking-tighter leading-tight">Gợi ý lộ trình đầu tư tài sản</h3>
-              <p className="text-[13px] font-medium text-white/80 leading-relaxed mb-10">
-                AI phân tích thấy <span className="text-emerald-300 font-bold">45 tài sản</span> sẽ kết thúc vòng đời khấu hao trong 3 tháng tới. Hãy xem xét phương án thuê ngoài hoặc nâng cấp để tối ưu chi phí vận hành.
-              </p>
-              <button className="w-full py-4 bg-white text-primary rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl hover:bg-surface-container-low active:scale-[0.98] transition-all">
-                Mở phân tích chi tiết
-              </button>
-            </div>
-          </motion.div>
+          {/* Removed AI Strategy Advisor as per request */}
+
 
           {/* Interactive Financial Calculator - Removed as per request for full automation */}
           <section className="bg-white p-8 lg:p-10 rounded-[3rem] shadow-soft border border-surface-container/30">

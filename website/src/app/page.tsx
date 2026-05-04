@@ -42,6 +42,7 @@ export default function Home() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [handovers, setHandovers] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [filterMode, setFilterMode] = useState<"all" | "unassigned">("all");
 
   useEffect(() => {
     if (selectedAsset?.id) {
@@ -108,9 +109,16 @@ export default function Home() {
 
   const currentUser = "Nguyễn Anh";
 
-  const filteredAssets = selectedCategories.includes("Tất cả")
-    ? editableAssets
-    : editableAssets.filter(a => selectedCategories.includes(a.category) || selectedCategories.includes(a.group_name));
+  const filteredAssets = editableAssets.filter(a => {
+    const categoryMatch = selectedCategories.includes("Tất cả") || 
+                         selectedCategories.includes(a.category) || 
+                         selectedCategories.includes(a.group_name);
+    
+    const isUnassigned = !a.user || a.user === "Chưa bàn giao" || a.user === "";
+    const assignmentMatch = filterMode === "all" || isUnassigned;
+    
+    return categoryMatch && assignmentMatch;
+  });
 
   const handleCreateAsset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,6 +245,26 @@ export default function Home() {
             {cat}
           </button>
         ))}
+      </div>
+
+      <div className="flex items-center gap-6 border-b border-surface-container pb-4">
+        <button 
+          onClick={() => setFilterMode("all")}
+          className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors ${filterMode === "all" ? "text-primary" : "text-outline hover:text-on-surface"}`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+          Tất cả kho
+        </button>
+        <button 
+          onClick={() => setFilterMode("unassigned")}
+          className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors ${filterMode === "unassigned" ? "text-green-600" : "text-outline hover:text-on-surface"}`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+          Sẵn sàng (Chưa gán)
+          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-md text-[10px]">
+            {editableAssets.filter(a => !a.user || a.user === "Chưa bàn giao").length}
+          </span>
+        </button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -415,42 +443,44 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-3 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar py-2">
                       {handovers.length > 0 ? (
-                        handovers.map((handover, idx) => (
-                          <div key={handover.id} className="flex flex-col p-3 bg-white/50 rounded-xl relative">
-                            {idx === 0 && !handover.return_date && (
-                              <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                            )}
-                            <p className="text-sm font-bold text-primary">
-                              {handover.assigned_user || "Chưa gán"}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-[10px] text-outline italic">
-                                Từ: {formatDate(handover.assigned_date)}
-                              </p>
-                              {handover.return_date && (
-                                <>
-                                  <span className="text-[10px] text-outline">-</span>
-                                  <p className="text-[10px] text-outline italic">
-                                    Đến: {formatDate(handover.return_date)}
+                        handovers.map((handover, idx) => {
+                          const isCurrent = idx === 0 && !handover.return_date;
+                          return (
+                            <div key={handover.id} className="relative pl-6 border-l-2 border-dashed border-surface-container ml-2">
+                              {/* Timeline Dot */}
+                              <div className={`absolute -left-[7px] top-1 h-3 w-3 rounded-full border-2 border-white ${isCurrent ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-outline"}`}></div>
+                              
+                              <div className={`p-3 rounded-xl ${isCurrent ? "bg-primary/5 border border-primary/10" : "bg-surface-container-low"}`}>
+                                <div className="flex justify-between items-start">
+                                  <p className={`text-sm font-black ${isCurrent ? "text-primary" : "text-on-surface"}`}>
+                                    {handover.assigned_user}
                                   </p>
-                                </>
-                              )}
+                                  {isCurrent && (
+                                    <span className="text-[9px] font-black uppercase text-green-600 bg-green-100 px-2 py-0.5 rounded">Đang dùng</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="material-symbols-outlined text-[12px] text-outline">calendar_today</span>
+                                  <p className="text-[10px] text-outline font-bold">
+                                    {formatDate(handover.assigned_date)} ➔ {handover.return_date ? formatDate(handover.return_date) : "Hiện tại"}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : selectedAsset.user ? (
-                         <div className="flex flex-col p-3 bg-white/50 rounded-xl relative">
-                            <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                            <p className="text-sm font-bold text-primary">
-                              {selectedAsset.user} ({selectedAsset.position})
-                            </p>
-                            <p className="text-[10px] text-outline mt-1 italic">Phòng: {selectedAsset.department}</p>
-                            <p className="text-[10px] text-outline italic">Từ: {formatDate(selectedAsset.handoverDate)}</p>
-                         </div>
+                        <div className="relative pl-6 border-l-2 border-dashed border-primary/30 ml-2">
+                           <div className="absolute -left-[7px] top-1 h-3 w-3 rounded-full border-2 border-white bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                           <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
+                              <p className="text-sm font-black text-primary">{selectedAsset.user}</p>
+                              <p className="text-[10px] text-outline mt-1 font-bold">Từ: {formatDate(selectedAsset.handoverDate)} ➔ Hiện tại</p>
+                           </div>
+                        </div>
                       ) : (
-                        <p className="text-sm text-outline italic text-center py-2">Tài sản chưa được bàn giao</p>
+                        <p className="text-sm text-outline italic text-center py-4 bg-surface-container-low rounded-2xl">Tài sản này chưa từng được bàn giao.</p>
                       )}
                     </div>
                   )}

@@ -133,7 +133,10 @@ let AssetsService = class AssetsService {
                     }]);
             }
         }
-        this.logAction(id, 'edit', `Cập nhật thông tin tài sản: ${updatedAsset.name}. Trạng thái: ${updatedAsset.status}`, updatedAsset.name, updatedAsset.code)
+        const handoverChange = oldUser !== newUser ? `[Bàn giao: ${oldUser || "Trống"} ➔ ${newUser || "Mới"}]` : "";
+        const statusDesc = `Trạng thái: ${updatedAsset.status}`;
+        const finalDesc = `Cập nhật ${updatedAsset.name}: ${handoverChange} ${statusDesc}`.trim();
+        this.logAction(id, 'edit', finalDesc, updatedAsset.name, updatedAsset.code)
             .catch(err => console.error('Background logging failed:', err));
         return updatedAsset;
     }

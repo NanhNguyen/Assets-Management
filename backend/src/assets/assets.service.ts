@@ -118,12 +118,11 @@ export class AssetsService {
     }
 
     const updatedAsset = data[0];
-    
-    // Handover tracking logic
     const newUser = assetData.user || null;
+    
+    // 1. Handover tracking logic (Restored)
     if (oldUser !== newUser) {
       if (oldUser) {
-        // End previous assignment
         await this.supabaseService.getClient().from('asset_handovers')
           .update({ return_date: new Date().toISOString() })
           .eq('asset_id', id)
@@ -131,7 +130,6 @@ export class AssetsService {
           .is('return_date', null);
       }
       if (newUser) {
-        // Start new assignment
         await this.supabaseService.getClient().from('asset_handovers')
           .insert([{
             asset_id: id,
@@ -141,7 +139,12 @@ export class AssetsService {
       }
     }
 
-    this.logAction(id, 'edit', `Cập nhật thông tin tài sản: ${updatedAsset.name}. Trạng thái: ${updatedAsset.status}`, updatedAsset.name, updatedAsset.code)
+    // 2. Build a detailed description for the audit log
+    const handoverChange = oldUser !== newUser ? `[Bàn giao: ${oldUser || "Trống"} ➔ ${newUser || "Mới"}]` : "";
+    const statusDesc = `Trạng thái: ${updatedAsset.status}`;
+    const finalDesc = `Cập nhật ${updatedAsset.name}: ${handoverChange} ${statusDesc}`.trim();
+
+    this.logAction(id, 'edit', finalDesc, updatedAsset.name, updatedAsset.code)
       .catch(err => console.error('Background logging failed:', err));
 
     return updatedAsset;
