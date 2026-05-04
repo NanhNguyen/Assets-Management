@@ -22,12 +22,12 @@ export default function AuditPage() {
   useEffect(() => {
     // Fetch logs from DB
     fetchAuditLogs().then(data => {
-      // We can still combine local stored logs if any, or just use DB logs
-      const savedLogs = localStorage.getItem("plutus_audit_logs");
-      if (savedLogs) {
-        setLogs([...JSON.parse(savedLogs), ...data]);
-      } else {
+      // Prioritize live DB logs. Only show local logs if DB returns nothing or as a fallback.
+      if (data && data.length > 0) {
         setLogs(data);
+      } else {
+        const savedLogs = localStorage.getItem("plutus_audit_logs");
+        if (savedLogs) setLogs(JSON.parse(savedLogs));
       }
     }).catch(console.error);
 

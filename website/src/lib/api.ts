@@ -97,7 +97,7 @@ export const fetchAuditLogs = async () => {
     assetCode: log.asset_code || log.assetCode,
     description: log.description,
     timestamp: log.created_at || log.timestamp,
-    user: log.user,
+    user: log.user_email || log.user,
     reason: log.reason,
     field: log.field,
     oldValue: log.old_value || log.oldValue,
@@ -187,4 +187,52 @@ export const getStats = (assets: Asset[]) => {
     brokenAssets: statusCounts['broken'] || 0,
     liquidationAssets: statusCounts['liquidation'] || 0,
   };
+};
+
+export const updateAsset = async (assetData: any): Promise<Asset> => {
+  const response = await fetchWithAuth(`${API_URL}/assets/${assetData.id}`, {
+    method: "POST", // Backend uses @Post for update too as per previous edit
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(assetData),
+  });
+
+  const row = await response.json();
+  if (!row.success) {
+    throw new Error(row?.error || "Failed to update asset");
+  }
+
+  const data = row.data;
+  return {
+    id: data.id,
+    code: data.code,
+    name: data.name,
+    category: data.category,
+    group_name: data.group_name,
+    manufacturer: data.manufacturer,
+    user: data.assigned_user || "Chưa bàn giao",
+    department: data.department,
+    position: data.position,
+    status: data.status,
+    price: Number(data.price),
+    purchaseDate: data.purchase_date,
+    handoverDate: data.handover_date || data.purchase_date,
+    handoverMinutesNo: data.handover_minutes_no || "",
+    vendor: data.vendor,
+    warrantyEnd: data.warranty_end,
+    depreciation_months: data.depreciation_months || "0",
+    notes: data.notes,
+    icon: data.icon || "inventory_2",
+    iconColor: data.icon_color || "indigo",
+  };
+};
+
+export const getAssetHandovers = async (id: string) => {
+  const response = await fetchWithAuth(`${API_URL}/assets/${id}/handovers`);
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data?.error || "Failed to fetch handovers");
+  }
+  return data.data;
 };

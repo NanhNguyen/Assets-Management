@@ -48,6 +48,24 @@ let AssetsController = class AssetsController {
             return { success: false, error: error.message };
         }
     }
+    async updateAsset(id, assetData) {
+        try {
+            const data = await this.assetsService.updateAsset(id, assetData);
+            return { success: true, data };
+        }
+        catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    async getAssetHandovers(id) {
+        try {
+            const data = await this.assetsService.getAssetHandovers(id);
+            return { success: true, data };
+        }
+        catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
 };
 exports.AssetsController = AssetsController;
 __decorate([
@@ -69,6 +87,21 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AssetsController.prototype, "createAsset", null);
+__decorate([
+    (0, common_1.Post)('assets/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AssetsController.prototype, "updateAsset", null);
+__decorate([
+    (0, common_1.Get)('assets/:id/handovers'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AssetsController.prototype, "getAssetHandovers", null);
 exports.AssetsController = AssetsController = __decorate([
     (0, common_1.Controller)('api'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

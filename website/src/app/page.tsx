@@ -1,7 +1,7 @@
 "use client";
 
 import { formatCurrency, formatDate, type Asset, DEPARTMENTS, CATEGORIES } from "@/lib/mockData";
-import { fetchAssets, createAsset } from "@/lib/api";
+import { fetchAssets, createAsset, updateAsset, getAssetHandovers } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,7 +40,16 @@ export default function Home() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [handovers, setHandovers] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (selectedAsset?.id) {
+      getAssetHandovers(selectedAsset.id).then(data => {
+        setHandovers(data || []);
+      }).catch(console.error);
+    }
+  }, [selectedAsset]);
 
   const [newAssetForm, setNewAssetForm] = useState({
     group_name: "Thiết bị IT",
@@ -58,15 +67,38 @@ export default function Home() {
     purchaseDate: new Date().toISOString().split('T')[0],
     vendor: "",
     warrantyPeriod: "24 tháng",
-    depreciation_months: "24",
+    depreciation_months: "", // Optional
     notes: ""
   });
+
+  const formatPrice = (val: string) => {
+    const num = val.replace(/\D/g, "");
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
 
   const [customFields, setCustomFields] = useState({
     group_name: "",
     category: "",
     department: ""
   });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ ...toast, show: false }), 2000);
+  };
+  const [editForm, setEditForm] = useState<any>(null);
+
+  useEffect(() => {
+    if (selectedAsset) {
+      setEditForm({
+        ...selectedAsset,
+        price: formatPrice(selectedAsset.price.toString())
+      });
+    }
+  }, [selectedAsset]);
 
   const showCustom = {
     group_name: newAssetForm.group_name === "Khác...",
@@ -100,11 +132,11 @@ export default function Home() {
         department: showCustom.department ? customFields.department : newAssetForm.department,
         handoverDate: newAssetForm.handoverDate,
         handoverMinutesNo: newAssetForm.handoverMinutesNo,
-        price: parseInt(newAssetForm.price) || 0,
+        price: parseInt(newAssetForm.price.replace(/\./g, "")) || 0,
         purchaseDate: newAssetForm.purchaseDate,
         vendor: newAssetForm.vendor,
         warrantyPeriod: newAssetForm.warrantyPeriod,
-        depreciation_months: newAssetForm.depreciation_months,
+        depreciation_months: newAssetForm.depreciation_months || null,
         notes: newAssetForm.notes,
         status: "active",
         icon: (showCustom.category ? customFields.category : newAssetForm.category).toLowerCase().includes("laptop") ? "laptop_mac" : "inventory_2",
@@ -122,9 +154,47 @@ export default function Home() {
         vendor: "", warrantyPeriod: "24 tháng", depreciation_months: "24", notes: ""
       });
       setCustomFields({ group_name: "", category: "", department: "" });
-      alert("Đã thêm tài sản mới thành công!");
+      showToast("Đã thêm tài sản mới thành công!");
     } catch (error: any) {
-      alert("Lỗi khi thêm tài sản: " + error.message);
+      showToast("Lỗi khi thêm tài sản: " + error.message, 'error');
+    }
+  };
+
+  const handleRevokeAsset = async () => {
+    if (!selectedAsset) return;
+    try {
+      const updated = await updateAsset({ ...selectedAsset, user: null, department: null, position: null });
+      setEditableAssets(prev => prev.map(a => a.id === updated.id ? updated : a));
+      setSelectedAsset(updated);
+      setIsEditing(false);
+      localStorage.removeItem("plutus_audit_logs");
+      showToast("Đã thu hồi tài sản thành công!");
+    } catch (error: any) {
+      showToast("Lỗi khi thu hồi: " + error.message, 'error');
+    }
+  };
+
+  const handleUpdateAsset = async () => {
+    if (!isEditing || !editForm) return;
+    
+    try {
+      const updateData = {
+        ...editForm,
+        price: typeof editForm.price === 'string' ? parseInt(editForm.price.replace(/\./g, "")) || 0 : editForm.price
+      };
+      
+      const updated = await updateAsset(updateData);
+      
+      setEditableAssets(prev => prev.map(a => a.id === updated.id ? updated : a));
+      setSelectedAsset(updated);
+      setIsEditing(false);
+      
+      // Clear localStorage logs to force re-fetch in Audit page
+      localStorage.removeItem("plutus_audit_logs");
+      
+      showToast("Cập nhật tài sản thành công!");
+    } catch (error: any) {
+      showToast("Lỗi khi cập nhật: " + error.message, 'error');
     }
   };
 
@@ -252,20 +322,44 @@ export default function Home() {
                     <p className="text-xs text-outline">{selectedAsset.code}</p>
                   </div>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center">
+                <button onClick={() => { setIsModalOpen(false); setIsEditing(false); }} className="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
 
-              <div className="space-y-6">
+              <form onSubmit={handleUpdateAsset} className="space-y-6">
                 <div className="p-4 bg-surface-container rounded-2xl">
                   <p className="text-[10px] font-black uppercase text-outline mb-2">Trạng thái</p>
-                  <StatusBadge status={selectedAsset.status} />
+                  {isEditing ? (
+                    <select className="w-full bg-white p-2 rounded-lg outline-none" value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})}>
+                      <option value="active">Đang sử dụng</option>
+                      <option value="maintenance">Bảo trì</option>
+                      <option value="broken">Hỏng</option>
+                      <option value="liquidation">Thanh lý</option>
+                    </select>
+                  ) : (
+                    <StatusBadge status={selectedAsset.status} />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-surface-container rounded-2xl">
-                    <p className="text-[10px] font-black uppercase text-outline mb-1">Dòng tài sản</p>
+                    <p className="text-[10px] font-black uppercase text-outline mb-1">Mã tài sản</p>
+                    {isEditing ? (
+                      <input className="w-full bg-white p-2 rounded-lg outline-none font-bold" value={editForm.code} onChange={e => setEditForm({...editForm, code: e.target.value})} />
+                    ) : (
+                      <p className="text-sm font-bold">{selectedAsset.code}</p>
+                    )}
+                  </div>
+                  <div className="p-4 bg-surface-container rounded-2xl">
+                    <p className="text-[10px] font-black uppercase text-outline mb-1">Tên tài sản</p>
+                    <p className="text-sm font-bold">{selectedAsset.name}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-surface-container rounded-2xl">
+                    <p className="text-[10px] font-black uppercase text-outline mb-1">Nhóm tài sản</p>
                     <p className="text-sm font-bold">{selectedAsset.group_name}</p>
                   </div>
                   <div className="p-4 bg-surface-container rounded-2xl">
@@ -286,18 +380,98 @@ export default function Home() {
                   </div>
                   <div className="p-4 bg-surface-container rounded-2xl">
                     <p className="text-[10px] font-black uppercase text-outline mb-1">Khấu hao</p>
-                    <p className="text-sm font-bold">{selectedAsset.depreciation_months} tháng</p>
+                    <p className="text-sm font-bold">{selectedAsset.depreciation_months || 0} tháng</p>
                   </div>
                 </div>
 
                 <div className="p-4 bg-surface-container rounded-2xl">
-                  <p className="text-[10px] font-black uppercase text-outline mb-1">Thông tin bàn giao</p>
-                  <p className="text-sm font-bold">{selectedAsset.user} - {selectedAsset.department}</p>
-                  <p className="text-[10px] text-outline mt-1 italic">Ngày: {formatDate(selectedAsset.handoverDate)}</p>
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-[10px] font-black uppercase text-outline">Lịch sử bàn giao</p>
+                    {selectedAsset.user && !isEditing && (
+                      <button type="button" onClick={handleRevokeAsset} className="text-[10px] font-black uppercase text-red-500 bg-red-500/10 px-3 py-1.5 rounded-full hover:bg-red-500/20 transition-colors">
+                        Thu hồi tài sản
+                      </button>
+                    )}
+                  </div>
+                  
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-outline mb-1">Người dùng mới</p>
+                          <input className="w-full bg-white p-2 rounded-lg outline-none text-sm" placeholder="Tên người dùng..." value={editForm.user || ""} onChange={e => setEditForm({...editForm, user: e.target.value})} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-outline mb-1">Chức danh</p>
+                          <input className="w-full bg-white p-2 rounded-lg outline-none text-sm" placeholder="Chức danh..." value={editForm.position || ""} onChange={e => setEditForm({...editForm, position: e.target.value})} />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-outline mb-1">Phòng ban</p>
+                        <select className="w-full bg-white p-2 rounded-lg outline-none text-sm" value={editForm.department || ""} onChange={e => setEditForm({...editForm, department: e.target.value})}>
+                          <option value="">Chọn phòng ban</option>
+                          {dynamicDepartments.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                      {handovers.length > 0 ? (
+                        handovers.map((handover, idx) => (
+                          <div key={handover.id} className="flex flex-col p-3 bg-white/50 rounded-xl relative">
+                            {idx === 0 && !handover.return_date && (
+                              <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                            )}
+                            <p className="text-sm font-bold text-primary">
+                              {handover.assigned_user || "Chưa gán"}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-[10px] text-outline italic">
+                                Từ: {formatDate(handover.assigned_date)}
+                              </p>
+                              {handover.return_date && (
+                                <>
+                                  <span className="text-[10px] text-outline">-</span>
+                                  <p className="text-[10px] text-outline italic">
+                                    Đến: {formatDate(handover.return_date)}
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : selectedAsset.user ? (
+                         <div className="flex flex-col p-3 bg-white/50 rounded-xl relative">
+                            <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                            <p className="text-sm font-bold text-primary">
+                              {selectedAsset.user} ({selectedAsset.position})
+                            </p>
+                            <p className="text-[10px] text-outline mt-1 italic">Phòng: {selectedAsset.department}</p>
+                            <p className="text-[10px] text-outline italic">Từ: {formatDate(selectedAsset.handoverDate)}</p>
+                         </div>
+                      ) : (
+                        <p className="text-sm text-outline italic text-center py-2">Tài sản chưa được bàn giao</p>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
+              </form>
 
-              <button onClick={() => setIsModalOpen(false)} className="w-full mt-8 py-4 bg-surface-container-high rounded-2xl font-black">Đóng</button>
+              <div className="flex gap-4 mt-8">
+                {isEditing ? (
+                  <>
+                    <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-surface-container rounded-2xl font-black text-sm">Hủy</button>
+                    <button type="button" onClick={handleUpdateAsset} className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black shadow-lg text-sm">Lưu thay đổi</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-surface-container rounded-2xl font-black text-sm">Đóng</button>
+                    <button type="button" onClick={() => setIsEditing(true)} className="flex-1 py-4 bg-primary text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 text-sm">
+                      <span className="material-symbols-outlined text-sm">edit</span> Chỉnh sửa
+                    </button>
+                  </>
+                )}
+              </div>
             </motion.div>
           </div>
         )}
@@ -325,9 +499,9 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1.5 text-xs font-bold">
-                    <label className="text-[10px] uppercase text-outline">Dòng tài sản</label>
+                    <label className="text-[10px] uppercase text-outline">Nhóm tài sản</label>
                     <div className="space-y-2">
                        <select className="w-full bg-surface-container-low p-4 rounded-xl outline-none" value={newAssetForm.group_name} onChange={e => setNewAssetForm({...newAssetForm, group_name: e.target.value})}>
                         {dynamicGroups.map(g => <option key={g} value={g}>{g}</option>)}
@@ -337,7 +511,7 @@ export default function Home() {
                         <motion.input 
                           initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                           className="w-full bg-primary/5 border border-primary/20 p-4 rounded-xl outline-none"
-                          placeholder="Nhập dòng tài sản mới..."
+                          placeholder="Nhập nhóm tài sản mới..."
                           value={customFields.group_name}
                           onChange={e => setCustomFields({...customFields, group_name: e.target.value})}
                         />
@@ -367,33 +541,65 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1.5 text-xs font-bold">
                     <label className="text-[10px] uppercase text-outline">Số lượng</label>
-                    <input type="number" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" value={newAssetForm.quantity} onChange={e => setNewAssetForm({...newAssetForm, quantity: e.target.value})} />
+                    <input type="number" min="1" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" value={newAssetForm.quantity} onChange={e => setNewAssetForm({...newAssetForm, quantity: e.target.value})} />
                   </div>
-                  <div className="space-y-1.5 text-xs font-bold flex flex-col justify-end">
-                    {/* Placeholder to align with quantity if needed, or other field */}
+                  <div className="space-y-1.5 text-xs font-bold">
+                    <label className="text-[10px] uppercase text-outline">Đơn vị bán</label>
+                    <input list="vendors-list" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" placeholder="Tên đơn vị bán..." value={newAssetForm.vendor} onChange={e => setNewAssetForm({...newAssetForm, vendor: e.target.value})} />
+                    <datalist id="vendors-list">
+                      <option value="FPT Shop" />
+                      <option value="Phong Vũ" />
+                      <option value="Gia Linh Tech" />
+                      <option value="The Gioi Di Dong" />
+                    </datalist>
                   </div>
                 </div>
 
                 <div className="space-y-1.5 text-xs font-bold">
                   <label className="text-[10px] uppercase text-outline">Thông số kỹ thuật/Mô tả</label>
-                  <textarea className="w-full bg-surface-container-low p-4 rounded-xl outline-none min-h-[100px]" placeholder="Chi tiết cấu hình..." value={newAssetForm.technicalSpecs} onChange={e => setNewAssetForm({...newAssetForm, technicalSpecs: e.target.value})} />
+                  <textarea className="w-full bg-surface-container-low p-4 rounded-xl outline-none min-h-[80px]" placeholder="Chi tiết cấu hình..." value={newAssetForm.technicalSpecs} onChange={e => setNewAssetForm({...newAssetForm, technicalSpecs: e.target.value})} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1.5 text-xs font-bold">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div className="space-y-1.5 text-xs font-bold">
                     <label className="text-[10px] uppercase text-outline">Đơn giá (VNĐ)</label>
-                    <input type="number" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" value={newAssetForm.price} onChange={e => setNewAssetForm({...newAssetForm, price: e.target.value})} />
+                    <input type="text" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" placeholder="0" value={newAssetForm.price} onChange={e => setNewAssetForm({...newAssetForm, price: formatPrice(e.target.value)})} />
                   </div>
                   <div className="space-y-1.5 text-xs font-bold">
-                    <label className="text-[10px] uppercase text-outline">Thời hạn khấu hao (Tháng)</label>
-                    <input type="number" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" value={newAssetForm.depreciation_months} onChange={e => setNewAssetForm({...newAssetForm, depreciation_months: e.target.value})} />
+                    <label className="text-[10px] uppercase text-outline">Ngày mua</label>
+                    <input type="date" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" value={newAssetForm.purchaseDate} onChange={e => setNewAssetForm({...newAssetForm, purchaseDate: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5 text-xs font-bold">
+                    <label className="text-[10px] uppercase text-outline">Thời hạn bảo hành</label>
+                    <input list="warranty-list" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" placeholder="VD: 24 tháng" value={newAssetForm.warrantyPeriod} onChange={e => setNewAssetForm({...newAssetForm, warrantyPeriod: e.target.value})} />
+                    <datalist id="warranty-list">
+                      <option value="12 tháng" />
+                      <option value="24 tháng" />
+                      <option value="36 tháng" />
+                      <option value="60 tháng" />
+                      <option value="Trọn đời" />
+                    </datalist>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="space-y-1.5 text-xs font-bold">
+                    <label className="text-[10px] uppercase text-outline">Ngày bàn giao</label>
+                    <input type="date" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" value={newAssetForm.handoverDate} onChange={e => setNewAssetForm({...newAssetForm, handoverDate: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5 text-xs font-bold">
+                    <label className="text-[10px] uppercase text-outline">Số biên bản bàn giao</label>
+                    <input className="w-full bg-surface-container-low p-4 rounded-xl outline-none" placeholder="VD: 01/25/BBBG" value={newAssetForm.handoverMinutesNo} onChange={e => setNewAssetForm({...newAssetForm, handoverMinutesNo: e.target.value})} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1.5 text-xs font-bold">
                     <label className="text-[10px] uppercase text-outline">Người sử dụng</label>
-                    <input className="w-full bg-surface-container-low p-4 rounded-xl outline-none" placeholder="Họ tên..." value={newAssetForm.user} onChange={e => setNewAssetForm({...newAssetForm, user: e.target.value})} />
+                    <input list="users-list" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" placeholder="Họ tên..." value={newAssetForm.user} onChange={e => setNewAssetForm({...newAssetForm, user: e.target.value})} />
+                    <datalist id="users-list">
+                      {editableAssets.map(a => <option key={a.id} value={a.user} />)}
+                    </datalist>
                   </div>
                   <div className="space-y-1.5 text-xs font-bold">
                     <label className="text-[10px] uppercase text-outline">Phòng ban</label>
@@ -415,11 +621,49 @@ export default function Home() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1.5 text-xs font-bold">
+                    <label className="text-[10px] uppercase text-outline">Khấu hao (Tháng) - Tùy chọn</label>
+                    <input type="number" className="w-full bg-surface-container-low p-4 rounded-xl outline-none" placeholder="VD: 24" value={newAssetForm.depreciation_months} onChange={e => setNewAssetForm({...newAssetForm, depreciation_months: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5 text-xs font-bold">
+                    <label className="text-[10px] uppercase text-outline">Chức danh</label>
+                    <input className="w-full bg-surface-container-low p-4 rounded-xl outline-none" placeholder="VD: Nhân viên, Trưởng phòng..." value={newAssetForm.position} onChange={e => setNewAssetForm({...newAssetForm, position: e.target.value})} />
+                  </div>
+                </div>
+
                 <div className="flex gap-4 pt-6">
                   <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-4 font-black text-outline">Hủy bỏ</button>
                   <button type="submit" className="flex-[2] py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20">Lưu hệ thống</button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Custom Toast Notification */}
+      <AnimatePresence>
+        {toast.show && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className={`px-8 py-5 rounded-[2rem] shadow-2xl flex items-center gap-4 backdrop-blur-xl border ${
+                toast.type === 'success' 
+                  ? "bg-green-500/90 text-white border-green-400" 
+                  : "bg-red-500/90 text-white border-red-400"
+              }`}
+            >
+              <div className="h-10 w-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl font-black">
+                  {toast.type === 'success' ? 'check_circle' : 'error'}
+                </span>
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest opacity-70">Thông báo hệ thống</p>
+                <p className="text-lg font-black tracking-tight">{toast.message}</p>
+              </div>
             </motion.div>
           </div>
         )}
