@@ -10,7 +10,9 @@ export default function ReportsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
   const [viewDate, setViewDate] = useState(new Date()); // Default to current month snapshot
+  const [pickerYear, setPickerYear] = useState(viewDate.getFullYear());
 
   useEffect(() => {
     fetchAssets().then(data => {
@@ -120,11 +122,12 @@ export default function ReportsPage() {
     };
   }, [assets]);
 
-  if (isLoading) return <div className="flex h-screen items-center justify-center text-primary font-bold">Đang tải báo cáo...</div>;
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center text-primary font-bold">Đang tải báo cáo...</div>;
+  }
 
   return (
     <div className="space-y-10">
-      {/* Header Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
         <div>
           <p className="label-text">Analytics Executive</p>
@@ -132,9 +135,10 @@ export default function ReportsPage() {
             Báo cáo & Phân tích
           </h2>
         </div>
+
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex items-center bg-surface-container-low p-1.5 rounded-2xl border border-surface-container shadow-sm">
-            <div className={`flex items-center gap-3 px-4 transition-all`}>
+            <div className="flex items-center gap-3 px-4 transition-all">
               <button 
                 onClick={handlePrevMonth}
                 className="h-8 w-8 rounded-full hover:bg-surface-container flex items-center justify-center text-outline transition-colors"
@@ -143,29 +147,17 @@ export default function ReportsPage() {
                 <span className="material-symbols-outlined text-sm">chevron_left</span>
               </button>
               
-              <div className="relative group/date">
-                <input
-                  type="month"
-                  className="absolute inset-0 opacity-0 cursor-pointer z-20"
-                  value={`${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}`}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const [y, m] = e.target.value.split('-').map(Number);
-                      const newDate = new Date(y, m - 1);
-                      setViewDate(newDate);
-                    }
-                  }}
-                />
-                <div className="min-w-[100px] text-center cursor-pointer group-hover/date:bg-surface-container/50 py-1 px-2 rounded-xl transition-colors">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary leading-none">
+              <div className="relative group/date" onClick={() => { setPickerYear(viewDate.getFullYear()); setShowDatePickerModal(true); }}>
+                <div className="min-w-[100px] text-center cursor-pointer group-hover/date:bg-primary/5 py-1 px-4 rounded-2xl transition-all border border-transparent group-hover/date:border-primary/10">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary leading-none mb-0.5">
                     Tháng {viewDate.getMonth() + 1}
                   </p>
-                  <p className="text-[12px] font-black text-on-surface tracking-tighter">
-                    Năm {viewDate.getFullYear()}
+                  <p className="text-[14px] font-black text-on-surface tracking-tighter">
+                    {viewDate.getFullYear()}
                   </p>
                 </div>
                 {/* Tooltip hint */}
-                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-on-surface text-surface px-2 py-1 rounded text-[9px] font-bold opacity-0 group-hover/date:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-30">
+                <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-on-surface text-surface px-3 py-1.5 rounded-full text-[10px] font-black opacity-0 group-hover/date:opacity-100 pointer-events-none transition-all translate-y-1 group-hover/date:translate-y-0 shadow-lg z-30 whitespace-nowrap">
                   Click để chọn nhanh
                 </div>
               </div>
@@ -191,10 +183,18 @@ export default function ReportsPage() {
       </div>
 
       {/* Dashboard Content */}
-      {filteredAssets.length > 0 ? (
-        <>
-          {/* 1. TOP ROW: PRIMARY KPI CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <AnimatePresence mode="wait">
+        {filteredAssets.length > 0 ? (
+          <motion.div
+            key={`${viewDate.getFullYear()}-${viewDate.getMonth()}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="space-y-10"
+          >
+            {/* 1. TOP ROW: PRIMARY KPI CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               { label: "Tổng tài sản", value: stats.totalAssets.toLocaleString("vi-VN"), icon: "inventory_2", trend: "+12%", color: "primary" },
               { label: "Tổng giá trị", value: formatCurrency(stats.totalValue), icon: "payments", trend: "+8%", color: "emerald-500" },
@@ -351,22 +351,25 @@ export default function ReportsPage() {
               </section>
             </div>
           </div>
-        </>
-      ) : (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center py-24 bg-white rounded-[3rem] shadow-soft border border-dashed border-surface-container"
-        >
-          <div className="h-24 w-24 rounded-full bg-surface-container-low flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-5xl text-outline opacity-30">query_stats</span>
-          </div>
-          <h3 className="text-xl font-black text-on-surface tracking-tighter mb-2">Hệ thống chưa ghi nhận dữ liệu</h3>
-          <p className="text-sm text-outline font-medium text-center max-w-md px-6">
-            Không tìm thấy thông tin tài sản nào được đăng ký tính đến hết tháng {viewDate.getMonth() + 1}/{viewDate.getFullYear()}.
-          </p>
         </motion.div>
-      )}
+        ) : (
+          <motion.div 
+            key="empty-state"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="flex flex-col items-center justify-center py-24 bg-white rounded-[3rem] shadow-soft border border-dashed border-surface-container"
+          >
+            <div className="h-24 w-24 rounded-full bg-surface-container-low flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-5xl text-outline opacity-30">query_stats</span>
+            </div>
+            <h3 className="text-xl font-black text-on-surface tracking-tighter mb-2">Hệ thống chưa ghi nhận dữ liệu</h3>
+            <p className="text-sm text-outline font-medium text-center max-w-md px-6">
+              Không tìm thấy thông tin tài sản nào được đăng ký tính đến hết tháng {viewDate.getMonth() + 1}/{viewDate.getFullYear()}.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* RE-USEABLE EXPORT MODAL */}
       <AnimatePresence>
@@ -447,6 +450,89 @@ export default function ReportsPage() {
                   className="w-full py-4 text-[10px] font-black text-outline hover:text-red-500 transition-colors uppercase tracking-[0.2em]"
                 >
                   Hủy bỏ & Quay lại
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CUSTOM LUXURY DATE PICKER MODAL */}
+      <AnimatePresence>
+        {showDatePickerModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDatePickerModal(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-[3rem] p-8 shadow-2xl overflow-hidden border border-white/20"
+            >
+              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-primary/10 to-transparent -z-10" />
+              
+              <div className="flex flex-col h-full">
+                {/* Year Navigation */}
+                <div className="flex items-center justify-between mb-8">
+                  <button 
+                    onClick={() => setPickerYear(pickerYear - 1)}
+                    className="h-10 w-10 rounded-full hover:bg-surface-container flex items-center justify-center text-outline transition-all active:scale-90"
+                  >
+                    <span className="material-symbols-outlined">chevron_left</span>
+                  </button>
+                  <h3 className="text-3xl font-black tracking-tighter text-on-surface">
+                    {pickerYear}
+                  </h3>
+                  <button 
+                    onClick={() => setPickerYear(pickerYear + 1)}
+                    className="h-10 w-10 rounded-full hover:bg-surface-container flex items-center justify-center text-outline transition-all active:scale-90"
+                  >
+                    <span className="material-symbols-outlined">chevron_right</span>
+                  </button>
+                </div>
+
+                {/* Months Grid */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", 
+                    "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", 
+                    "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
+                  ].map((month, idx) => {
+                    const isSelected = viewDate.getFullYear() === pickerYear && viewDate.getMonth() === idx;
+                    return (
+                      <button
+                        key={month}
+                        onClick={() => {
+                          setViewDate(new Date(pickerYear, idx));
+                          setShowDatePickerModal(false);
+                        }}
+                        className={`py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                          isSelected 
+                            ? "bg-primary text-white shadow-lg shadow-primary/30" 
+                            : "hover:bg-primary/5 text-outline hover:text-primary"
+                        }`}
+                      >
+                        {month}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const now = new Date();
+                    setPickerYear(now.getFullYear());
+                    setViewDate(now);
+                    setShowDatePickerModal(false);
+                  }}
+                  className="mt-8 py-4 w-full rounded-2xl bg-surface-container-low text-[10px] font-black uppercase tracking-[0.2em] text-primary hover:bg-primary/10 transition-all"
+                >
+                  Về tháng hiện tại
                 </button>
               </div>
             </motion.div>
