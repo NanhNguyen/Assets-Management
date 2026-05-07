@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Plutus | Asset Management",
-  description: "Hệ thống quản lý tài sản nội bộ doanh nghiệp Plutus",
+  title: "Plutus | Quản lý tài sản",
+  description: "Hệ thống quản lý tài sản nội bộ doanh nghiệp Netspace",
 };
 
 export default function RootLayout({

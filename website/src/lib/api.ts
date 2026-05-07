@@ -162,10 +162,31 @@ export const generateSummaryStats = (assets: Asset[]) => {
     }))
     .sort((a, b) => b.assetCount - a.assetCount);
 
+  let activeAssets = 0;
+  let unassignedAssets = 0;
+  let maintenanceAssets = 0;
+  let liquidationAssets = 0;
+
+  assets.forEach(asset => {
+    if (asset.user === "Chưa bàn giao" || !asset.user) {
+      unassignedAssets++;
+    } else if (asset.status === "maintenance") {
+      maintenanceAssets++;
+    } else if (asset.status === "liquidated") {
+      liquidationAssets++;
+    } else {
+      activeAssets++; // If it has a user and isn't maintenance or liquidated
+    }
+  });
+
   return {
     totalValue,
     totalAssets,
-    departments: sortedDeps
+    departments: sortedDeps,
+    activeAssets,
+    unassignedAssets,
+    maintenanceAssets,
+    liquidationAssets
   };
 };
 

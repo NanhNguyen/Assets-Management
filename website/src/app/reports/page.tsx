@@ -10,7 +10,7 @@ export default function ReportsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [timeFilter, setTimeFilter] = useState<"all" | "currentMonth" | "lastMonth">("all");
+  const [viewDate, setViewDate] = useState(new Date()); // Default to current month snapshot
 
   useEffect(() => {
     fetchAssets().then(data => {
@@ -19,20 +19,36 @@ export default function ReportsPage() {
     }).catch(console.error);
   }, []);
 
-  const filteredByMonth = useMemo(() => {
-    if (timeFilter === "all") return assets;
-    const now = new Date();
-    const targetMonth = timeFilter === "currentMonth" ? now.getMonth() : now.getMonth() - 1;
-    const targetYear = (timeFilter === "lastMonth" && now.getMonth() === 0) ? now.getFullYear() - 1 : now.getFullYear();
-    const finalMonth = targetMonth < 0 ? 11 : targetMonth;
+  const handlePrevMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1));
+  };
 
-    return assets.filter(asset => {
-      const pDate = new Date(asset.purchaseDate);
-      return pDate.getMonth() === finalMonth && pDate.getFullYear() === targetYear;
+  const handleNextMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1));
+  };
+
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    assets.forEach(asset => {
+      if (asset.purchaseDate) {
+        const d = new Date(asset.purchaseDate);
+        months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      }
     });
-  }, [assets, timeFilter]);
+    return Array.from(months).sort();
+  }, [assets]);
 
-  const stats = useMemo(() => generateSummaryStats(filteredByMonth), [filteredByMonth]);
+  const filteredAssets = useMemo(() => {
+    // Cumulative snapshot: All assets purchased on or before the end of the selected month
+    const endOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
+    return assets.filter(asset => {
+      if (!asset.purchaseDate) return false;
+      const purchaseDate = new Date(asset.purchaseDate);
+      return purchaseDate <= endOfMonth;
+    });
+  }, [assets, viewDate]);
+
+  const stats = useMemo(() => generateSummaryStats(filteredAssets), [filteredAssets]);
   const departments = stats.departments;
 
   const handleExportExcel = (type: "general" | "accounting" = "general") => {
@@ -116,23 +132,57 @@ export default function ReportsPage() {
             Báo cáo & Phân tích
           </h2>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: "all", label: "Toàn thời gian" },
-            { id: "currentMonth", label: "Tháng này" },
-            { id: "lastMonth", label: "Tháng trước" }
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setTimeFilter(f.id as any)}
-              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeFilter === f.id ? "bg-primary text-white shadow-lg" : "bg-surface-container-low text-outline border border-surface-container hover:border-primary/20"}`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center bg-surface-container-low p-1.5 rounded-2xl border border-surface-container shadow-sm">
+            <div className={`flex items-center gap-3 px-4 transition-all`}>
+              <button 
+                onClick={handlePrevMonth}
+                className="h-8 w-8 rounded-full hover:bg-surface-container flex items-center justify-center text-outline transition-colors"
+                title="Tháng trước"
+              >
+                <span className="material-symbols-outlined text-sm">chevron_left</span>
+              </button>
+              
+              <div className="relative group/date">
+                <input
+                  type="month"
+                  className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                  value={`${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}`}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const [y, m] = e.target.value.split('-').map(Number);
+                      const newDate = new Date(y, m - 1);
+                      setViewDate(newDate);
+                    }
+                  }}
+                />
+                <div className="min-w-[100px] text-center cursor-pointer group-hover/date:bg-surface-container/50 py-1 px-2 rounded-xl transition-colors">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary leading-none">
+                    Tháng {viewDate.getMonth() + 1}
+                  </p>
+                  <p className="text-[12px] font-black text-on-surface tracking-tighter">
+                    Năm {viewDate.getFullYear()}
+                  </p>
+                </div>
+                {/* Tooltip hint */}
+                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-on-surface text-surface px-2 py-1 rounded text-[9px] font-bold opacity-0 group-hover/date:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-30">
+                  Click để chọn nhanh
+                </div>
+              </div>
+
+              <button 
+                onClick={handleNextMonth}
+                className="h-8 w-8 rounded-full hover:bg-surface-container flex items-center justify-center text-outline transition-colors"
+                title="Tháng sau"
+              >
+                <span className="material-symbols-outlined text-sm">chevron_right</span>
+              </button>
+            </div>
+          </div>
+          
           <button
             onClick={() => setShowExportModal(true)}
-            className="btn-primary flex items-center gap-2 group ml-4"
+            className="btn-primary flex items-center gap-2 group"
           >
             <span className="material-symbols-outlined text-sm group-hover:translate-y-0.5 transition-transform">download</span>
             Xuất Báo cáo Excel
@@ -140,173 +190,183 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* 1. TOP ROW: PRIMARY KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: "Tổng tài sản", value: stats.totalAssets.toLocaleString("vi-VN"), icon: "inventory_2", trend: "+12%", color: "primary" },
-          { label: "Tổng giá trị", value: formatCurrency(stats.totalValue), icon: "payments", trend: "+8%", color: "emerald-500" },
-          { label: "Tỷ lệ sử dụng", value: "76.2%", icon: "pie_chart", trend: "+3%", color: "orange-500" },
-          {
-            label: "Khấu hao dự kiến",
-            value: formatCurrency(depreciationCalc.monthlyRate),
-            icon: "trending_down",
-            trend: "Tự động",
-            color: "red-500"
-          },
-        ].map((kpi, idx) => (
-          <motion.div 
-            key={kpi.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="card p-6 card-hover relative overflow-hidden group border-none bg-white shadow-xl shadow-black/[0.03]"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-surface-container rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:bg-primary/5 transition-colors" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${kpi.color === 'primary' ? 'bg-primary/10 text-primary' : `bg-${kpi.color}/10 text-${kpi.color}`}`}>
-                  <span className="material-symbols-outlined text-2xl">{kpi.icon}</span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${kpi.trend.startsWith("+") ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
-                    {kpi.trend}
-                  </span>
-                  <p className="text-[8px] font-bold text-outline mt-1 uppercase">Tháng này</p>
-                </div>
-              </div>
-              <h3 className="text-2xl font-black text-on-surface tracking-tighter leading-none mb-1">{kpi.value}</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-outline">{kpi.label}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* MAIN CONTENT GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Left Column: Core Data Visualization (8 cols) */}
-        <div className="lg:col-span-8 space-y-10">
-          
-          {/* Status Breakdown Section */}
-          <section className="bg-white p-8 lg:p-10 rounded-[3rem] shadow-soft border border-surface-container/30">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h4 className="text-xl font-black tracking-tighter">Trạng thái vận hành</h4>
-                <p className="text-xs text-outline font-medium mt-1">Phân bổ chi tiết số lượng tài sản theo tình trạng sử dụng</p>
-              </div>
-              <div className="h-10 w-10 flex items-center justify-center text-outline">
-                <span className="material-symbols-outlined">donut_large</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[
-                { label: "Đang sử dụng", count: 13, pct: 76, color: "bg-emerald-500", icon: "task_alt" },
-                { label: "Chưa sử dụng", count: 0, pct: 10, color: "bg-primary", icon: "inventory" },
-                { label: "Đang bảo trì", count: 0, pct: 7, color: "bg-orange-500", icon: "build" },
-                { label: "Đã thanh lý", count: 0, pct: 7, color: "bg-red-500", icon: "delete_sweep" },
-              ].map((item) => (
-                <div key={item.label} className="p-6 rounded-[2rem] bg-surface-container-low border border-surface-container hover:border-primary/20 transition-all group">
+      {/* Dashboard Content */}
+      {filteredAssets.length > 0 ? (
+        <>
+          {/* 1. TOP ROW: PRIMARY KPI CARDS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { label: "Tổng tài sản", value: stats.totalAssets.toLocaleString("vi-VN"), icon: "inventory_2", trend: "+12%", color: "primary" },
+              { label: "Tổng giá trị", value: formatCurrency(stats.totalValue), icon: "payments", trend: "+8%", color: "emerald-500" },
+              { label: "Tỷ lệ sử dụng", value: "76.2%", icon: "pie_chart", trend: "+3%", color: "orange-500" },
+              {
+                label: "Khấu hao dự kiến",
+                value: formatCurrency(depreciationCalc.monthlyRate),
+                icon: "trending_down",
+                trend: "Tự động",
+                color: "red-500"
+              },
+            ].map((kpi, idx) => (
+              <motion.div 
+                key={kpi.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className="card p-6 card-hover relative overflow-hidden group border-none bg-white shadow-xl shadow-black/[0.03]"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-surface-container rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:bg-primary/5 transition-colors" />
+                <div className="relative z-10">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className={`material-symbols-outlined text-lg ${item.color.replace('bg-', 'text-')}`}>{item.icon}</span>
-                      <span className="text-sm font-bold text-on-surface">{item.label}</span>
+                    <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${kpi.color === 'primary' ? 'bg-primary/10 text-primary' : `bg-${kpi.color}/10 text-${kpi.color}`}`}>
+                      <span className="material-symbols-outlined text-2xl">{kpi.icon}</span>
                     </div>
-                    <span className="text-xl font-black">{item.count}</span>
+                    <div className="flex flex-col items-end">
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${kpi.trend.startsWith("+") ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
+                        {kpi.trend}
+                      </span>
+                      <p className="text-[8px] font-bold text-outline mt-1 uppercase">Tháng này</p>
+                    </div>
                   </div>
-                  <div className="h-2 bg-surface-container rounded-full overflow-hidden mb-3">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${item.pct}%` }}
-                      className={`h-full ${item.color} rounded-full`}
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-outline font-black uppercase tracking-widest">{item.pct}% tỉ lệ cơ cấu</span>
-                    <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">Xem danh sách</span>
-                  </div>
+                  <h3 className="text-2xl font-black text-on-surface tracking-tighter leading-none mb-1">{kpi.value}</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-outline">{kpi.label}</p>
                 </div>
-              ))}
-            </div>
-          </section>
+              </motion.div>
+            ))}
+          </div>
 
-          {/* Department Insights Section */}
-          <section className="bg-white p-8 lg:p-10 rounded-[3rem] shadow-soft border border-surface-container/30 overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8">
-               <span className="material-symbols-outlined text-surface-container text-8xl opacity-20">hub</span>
-            </div>
-            <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-10">
-                <div className="h-12 w-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500">
-                  <span className="material-symbols-outlined">analytics</span>
+          {/* MAIN CONTENT GRID */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            {/* Left Column: Core Data Visualization (8 cols) */}
+            <div className="lg:col-span-8 space-y-10">
+              
+              {/* Status Breakdown Section */}
+              <section className="bg-white p-8 lg:p-10 rounded-[3rem] shadow-soft border border-surface-container/30">
+                <div className="flex items-center justify-between mb-10">
+                  <div>
+                    <h4 className="text-xl font-black tracking-tighter">Trạng thái vận hành</h4>
+                    <p className="text-xs text-outline font-medium mt-1">Phân bổ chi tiết số lượng tài sản theo tình trạng sử dụng</p>
+                  </div>
+                  <div className="h-10 w-10 flex items-center justify-center text-outline">
+                    <span className="material-symbols-outlined">donut_large</span>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xl font-black tracking-tighter">Hiệu suất phòng ban</h4>
-                  <p className="text-xs text-outline font-medium mt-0.5">Thống kê số lượng tài sản được cấp phát tại các đơn vị</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                {departments.slice(0, 6).map((dept: { name: string; assetCount: number; code: string; percentage: number }, i: number) => (
-                  <div key={dept.code} className="group">
-                    <div className="flex items-center justify-between mb-3 leading-none">
-                      <span className="text-sm font-bold text-on-surface-variant group-hover:text-primary transition-all group-hover:translate-x-1 duration-300 italic">{dept.name}</span>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-black text-on-surface">{dept.assetCount}</span>
-                        <span className="text-[10px] text-outline font-bold uppercase">Tài sản</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {[
+                    { label: "Đang sử dụng", count: stats.activeAssets || 0, pct: stats.totalAssets > 0 ? Math.round((stats.activeAssets / stats.totalAssets) * 100) : 0, color: "bg-emerald-500", icon: "task_alt" },
+                    { label: "Chưa sử dụng", count: stats.unassignedAssets || 0, pct: stats.totalAssets > 0 ? Math.round((stats.unassignedAssets / stats.totalAssets) * 100) : 0, color: "bg-primary", icon: "inventory" },
+                    { label: "Đang bảo trì", count: stats.maintenanceAssets || 0, pct: stats.totalAssets > 0 ? Math.round(((stats.maintenanceAssets || 0) / stats.totalAssets) * 100) : 0, color: "bg-orange-500", icon: "build" },
+                    { label: "Đã thanh lý", count: stats.liquidationAssets || 0, pct: stats.totalAssets > 0 ? Math.round(((stats.liquidationAssets || 0) / stats.totalAssets) * 100) : 0, color: "bg-red-500", icon: "delete_sweep" },
+                  ].map((item) => (
+                    <div key={item.label} className="p-6 rounded-[2rem] bg-surface-container-low border border-surface-container hover:border-primary/20 transition-all group">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`material-symbols-outlined text-lg ${item.color.replace('bg-', 'text-')}`}>{item.icon}</span>
+                          <span className="text-sm font-bold text-on-surface">{item.label}</span>
+                        </div>
+                        <span className="text-xl font-black">{item.count}</span>
+                      </div>
+                      <div className="h-2 bg-surface-container rounded-full overflow-hidden mb-3">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${item.pct}%` }}
+                          className={`h-full ${item.color} rounded-full`}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-outline font-black uppercase tracking-widest">{item.pct}% tỉ lệ cơ cấu</span>
+                        <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">Xem danh sách</span>
                       </div>
                     </div>
-                    <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${dept.percentage}%` }}
-                        transition={{ duration: 1.5, ease: "easeOut", delay: i * 0.1 }}
-                        className="h-full bg-gradient-to-r from-primary to-primary-fixed rounded-full"
-                      />
+                  ))}
+                </div>
+              </section>
+
+              {/* Department Insights Section */}
+              <section className="bg-white p-8 lg:p-10 rounded-[3rem] shadow-soft border border-surface-container/30 overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-8">
+                  <span className="material-symbols-outlined text-surface-container text-8xl opacity-20">hub</span>
+                </div>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-4 mb-10">
+                    <div className="h-12 w-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500">
+                      <span className="material-symbols-outlined">analytics</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black tracking-tighter">Hiệu suất phòng ban</h4>
+                      <p className="text-xs text-outline font-medium mt-0.5">Thống kê số lượng tài sản được cấp phát tại các đơn vị</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        </div>
 
-        {/* Right Column: AI Analysis & Financial Planning (4 cols) */}
-        <div className="lg:col-span-4 space-y-10">
-          
-          {/* Removed AI Strategy Advisor as per request */}
-
-
-          {/* Interactive Financial Calculator - Removed as per request for full automation */}
-          <section className="bg-white p-8 lg:p-10 rounded-[3rem] shadow-soft border border-surface-container/30">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="h-12 w-12 rounded-2xl bg-surface-container flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-2xl">insights</span>
-              </div>
-              <div>
-                <h4 className="text-lg font-black tracking-tighter">Tổng quan Khấu hao</h4>
-                <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Financial Summary</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <p className="text-xs text-outline leading-relaxed italic">
-                Hệ thống tự động tính toán số tiền khấu hao dựa trên Nguyên giá và Thời hạn khấu hao của từng tài sản riêng biệt.
-              </p>
-              
-              <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/10 relative overflow-hidden">
-                <div className="relative z-10">
-                  <p className="text-[10px] font-black uppercase text-primary/70 tracking-widest mb-1">Dự toán khấu hao định kỳ</p>
-                  <p className="text-3xl font-black text-on-surface tracking-tighter">{formatCurrency(depreciationCalc.monthlyRate)}</p>
-                  <div className="mt-6 flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <span className="text-[9px] text-outline font-black uppercase tracking-widest italic">Giá trị tổng hợp theo thời gian thực</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                    {departments.slice(0, 6).map((dept: any, i: number) => (
+                      <div key={dept.code} className="group">
+                        <div className="flex items-center justify-between mb-3 leading-none">
+                          <span className="text-sm font-bold text-on-surface-variant group-hover:text-primary transition-all group-hover:translate-x-1 duration-300 italic">{dept.name}</span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-lg font-black text-on-surface">{dept.assetCount}</span>
+                            <span className="text-[10px] text-outline font-bold uppercase">Tài sản</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${dept.percentage}%` }}
+                            transition={{ duration: 1.5, ease: "easeOut", delay: i * 0.1 }}
+                            className="h-full bg-gradient-to-r from-primary to-primary-fixed rounded-full"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              </section>
             </div>
-          </section>
-        </div>
-      </div>
+
+            {/* Right Column */}
+            <div className="lg:col-span-4 space-y-10">
+              <section className="bg-white p-8 lg:p-10 rounded-[3rem] shadow-soft border border-surface-container/30">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="h-12 w-12 rounded-2xl bg-surface-container flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined text-2xl">insights</span>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-black tracking-tighter">Tổng quan Khấu hao</h4>
+                    <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Financial Summary</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <p className="text-xs text-outline leading-relaxed italic">
+                    Hệ thống tự động tính toán số tiền khấu hao dựa trên Nguyên giá và Thời hạn khấu hao.
+                  </p>
+                  
+                  <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/10 relative overflow-hidden">
+                    <div className="relative z-10">
+                      <p className="text-[10px] font-black uppercase text-primary/70 tracking-widest mb-1">Dự toán khấu hao định kỳ</p>
+                      <p className="text-3xl font-black text-on-surface tracking-tighter">{formatCurrency(depreciationCalc.monthlyRate)}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </>
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center py-24 bg-white rounded-[3rem] shadow-soft border border-dashed border-surface-container"
+        >
+          <div className="h-24 w-24 rounded-full bg-surface-container-low flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-5xl text-outline opacity-30">query_stats</span>
+          </div>
+          <h3 className="text-xl font-black text-on-surface tracking-tighter mb-2">Hệ thống chưa ghi nhận dữ liệu</h3>
+          <p className="text-sm text-outline font-medium text-center max-w-md px-6">
+            Không tìm thấy thông tin tài sản nào được đăng ký tính đến hết tháng {viewDate.getMonth() + 1}/{viewDate.getFullYear()}.
+          </p>
+        </motion.div>
+      )}
 
       {/* RE-USEABLE EXPORT MODAL */}
       <AnimatePresence>

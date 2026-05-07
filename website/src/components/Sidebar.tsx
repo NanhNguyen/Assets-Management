@@ -64,12 +64,17 @@ export default function Sidebar() {
         animate={{ opacity: 1, x: 0 }}
         className="mb-10 px-2"
       >
-        <Link href="/">
-          <h1 className="text-2xl font-black gradient-text tracking-tighter cursor-pointer">Plutus</h1>
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="h-10 w-10 relative overflow-hidden rounded-xl shadow-lg shadow-primary/10 group-hover:scale-105 transition-transform duration-300">
+            <img src="/icon.png" alt="Plutus Logo" className="object-cover w-full h-full" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black gradient-text tracking-tighter leading-none">Plutus</h1>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-outline mt-1 opacity-60">
+              Enterprise Asset Suite
+            </p>
+          </div>
         </Link>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-outline mt-1 opacity-70">
-          Enterprise Asset Suite
-        </p>
       </motion.div>
 
       {/* Navigation */}

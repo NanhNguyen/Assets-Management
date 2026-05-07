@@ -99,8 +99,7 @@ let AuthService = class AuthService {
     async getAllUsers() {
         const { data, error } = await this.supabaseService.getClient()
             .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('*');
         if (error) {
             throw new Error(`Lỗi lấy danh sách nhân sự: ${error.message}`);
         }
